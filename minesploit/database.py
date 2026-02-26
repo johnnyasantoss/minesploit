@@ -1,5 +1,7 @@
 """Exploit database and registry"""
 
+from __future__ import annotations
+
 from minesploit.framework import ExploitMeta
 from typing import Any
 
