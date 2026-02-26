@@ -215,7 +215,36 @@ Available Commands:
 
 
 def main():
-    MinesploitShell().cmdloop()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Minesploit REPL")
+    parser.add_argument(
+        "-s",
+        "--script",
+        type=str,
+        help="Run commands from a script file",
+    )
+    parser.add_argument(
+        "-c",
+        "--command",
+        type=str,
+        help="Run a single command",
+    )
+    args = parser.parse_args()
+
+    shell = MinesploitShell()
+
+    if args.script:
+        with open(args.script, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    print(f"minesploit> {line}")
+                    shell.onecmd(line)
+    elif args.command:
+        shell.onecmd(args.command)
+    else:
+        shell.cmdloop()
 
 
 if __name__ == "__main__":

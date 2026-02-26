@@ -191,6 +191,16 @@ minesploit (cve_2016_stratum_mass_duplicate)> run
 minesploit (cve_2016_stratum_mass_duplicate)> exit
 ```
 
+#### REPL Options
+
+- `-s, --script <file>` - Run commands from a script file (non-interactive)
+- `-c, --command <cmd>` - Run a single command
+
+```bash
+$ python -m minesploit.repl -s script.ms
+$ python -m minesploit.repl -c "list exploits"
+```
+
 ---
 
 ## Metasploit Integration
