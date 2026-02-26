@@ -51,8 +51,8 @@ minesploit/
 │   │   │   ├── client.py    # Stratum v1 client
 │   │   │   ├── server.py    # Stratum v1 server mock
 │   │   │   └── exploits/
-│   │   ├── stratumv2/
-│   │   └── p2pool/
+│   │   ├── stratumv2/       # Uses: stratumv2/stratumv2
+│   │   └── p2pool/          # References: p2pool/p2pool
 │   ├── exploits/            # Exploit modules
 │   │   ├── __init__.py
 │   │   ├── cve_2013_stratum_duplicate_shares.py
@@ -66,12 +66,26 @@ minesploit/
 │       ├── networking.py    # TCP/SSL utilities
 │       ├── crypto.py        # Bitcoin crypto helpers
 │       └── parser.py        # Message parsing
-└── repl/                    # REPL application
-    ├── __init__.py
-    ├── shell.py            # Main REPL loop
-    ├── commands.py         # CLI commands
-    └── completer.py        # Tab completion
+├── repl/                    # REPL application
+│   ├── __init__.py
+│   ├── shell.py            # Main REPL loop
+│   ├── commands.py         # CLI commands
+│   └── completer.py        # Tab completion
+└── tests/
 ```
+
+### External Dependencies (Existing Implementations)
+
+We leverage existing open-source implementations where possible:
+
+| Protocol | Implementation | URL |
+|----------|---------------|-----|
+| Stratum V1 | Custom (simple client/server) | This repo |
+| Stratum V2 | stratumv2/stratumv2 | https://github.com/stratumv2/stratumv2 |
+| P2Pool | p2pool/p2pool | https://github.com/p2pool/p2pool |
+| P2Pool v2 | pool2win/p2pool-v2 | https://github.com/pool2win/p2pool-v2 |
+
+For protocol testing where we don't need introspection, use these existing implementations as reference or integration points.
 
 ---
 
@@ -218,6 +232,7 @@ Minesploit is designed to work alongside Metasploit:
 - **Commit message format**: `{type}: {short description}` where type is `feat`, `fix`, `docs`, `refactor`, `test`
 - **Build before commit** - Run lint/typecheck: `ruff check . && mypy minesploit/`
 - **Never commit broken code** - All tests should pass before committing
+- **Update AGENTS.md** - After implementing any feature, change, or new exploit, update this file as the single source of truth
 
 ---
 
