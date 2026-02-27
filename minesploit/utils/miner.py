@@ -1,4 +1,4 @@
-"""CPU Miner utility using Docker-wrapped mujina"""
+"""CPU Miner utility using Docker-wrapped cpuminer"""
 
 import subprocess
 import time
@@ -14,8 +14,7 @@ class PoolConfig:
 
 
 class CPUMiner:
-    IMAGE = "ghcr.io/256foundation/mujina-minerd:latest"
-    API_PORT = 7785
+    IMAGE = "pmietlicki/cpuminer:latest"
 
     def __init__(
         self,
@@ -34,13 +33,14 @@ class CPUMiner:
         self._password = password
         self._container_name: str | None = None
         self._running = False
-        self._api_port = self.API_PORT
 
     def mine_at(self, pool: PoolConfig) -> "CPUMiner":
         self._pool = pool
         return self.start()
 
     def _get_pool_config(self) -> PoolConfig:
+        import platform
+
         if self._pool:
             if hasattr(self._pool, "host") and hasattr(self._pool, "port"):
                 return PoolConfig(
@@ -59,15 +59,7 @@ class CPUMiner:
 
     def start(self) -> "CPUMiner":
         pool = self._get_pool_config()
-        container_name = f"minesploit-mujina-{id(self)}"
-
-        env = [
-            "MUJINA_USB_DISABLE=1",
-            f"MUJINA_CPUMINER_THREADS={self.threads}",
-            f"MUJINA_POOL_URL=stratum+tcp://{pool.host}:{pool.port}",
-            f"MUJINA_POOL_USER={pool.user}",
-            f"MUJINA_POOL_PASS={pool.password}",
-        ]
+        container_name = f"minesploit-miner-{id(self)}"
 
         cmd = [
             "docker",
@@ -75,12 +67,20 @@ class CPUMiner:
             "-d",
             "--name",
             container_name,
-            "-p",
-            f"{self._api_port}:{self.API_PORT}",
+            "--network",
+            "host",
+            "-e",
+            f"POOL=stratum+tcp://{pool.host}:{pool.port}",
+            "-e",
+            f"USER={pool.user}",
+            "-e",
+            f"PASS={pool.password}",
+            "-e",
+            "ALGO=sha256d",
+            "-e",
+            f"NB_THREADS={self.threads}",
+            self.IMAGE,
         ]
-        for e in env:
-            cmd.extend(["-e", e])
-        cmd.append(self.IMAGE)
 
         subprocess.run(["docker", "pull", self.image], capture_output=True)
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -93,25 +93,34 @@ class CPUMiner:
         return self
 
     def get_stats(self) -> dict:
-        if not self._running:
+        if not self._running or not self._container_name:
             return {"running": False}
 
-        try:
-            import requests
+        result = subprocess.run(
+            ["docker", "logs", self._container_name],
+            capture_output=True,
+            text=True,
+        )
+        output = result.stdout + result.stderr
 
-            resp = requests.get(f"http://localhost:{self._api_port}/stats", timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                return {
-                    "running": True,
-                    "hashrate_khs": data.get("hashrate", 0),
-                    "accepted": data.get("accepted_shares", 0),
-                    "rejected": data.get("rejected_shares", 0),
-                }
-        except Exception:
-            pass
+        import re
 
-        return {"running": self._running, "hashrate_khs": 0, "accepted": 0, "rejected": 0}
+        hashrate = 0.0
+        for unit, mult in [("MH/s", 1000), ("kH/s", 1)]:
+            m = re.search(r"(\d+\.\d+)\s*" + unit, output)
+            if m:
+                hashrate = float(m.group(1)) * mult
+                break
+
+        accepted = len(re.findall(r"accepted", output, re.I))
+        rejected = len(re.findall(r"rejected", output, re.I))
+
+        return {
+            "running": True,
+            "hashrate_khs": hashrate,
+            "accepted": accepted,
+            "rejected": rejected,
+        }
 
     def stop(self) -> None:
         if self._container_name:
