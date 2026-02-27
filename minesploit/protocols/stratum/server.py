@@ -352,3 +352,6 @@ class StratumServer:
     @property
     def authorizations(self) -> dict[str, bool]:
         return self._authorizations
+
+    def has_workers(self) -> bool:
+        return len(self._authorizations) > 0

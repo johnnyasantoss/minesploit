@@ -61,6 +61,26 @@ result = await exploit.check("192.168.1.100", port=3333)
 print(result.message)
 ```
 
+## CPU Mining for Hypothesis Testing
+
+Test share-stealing attacks and other CVEs that require real hashrate:
+
+```python
+from minesploit.protocols.stratum.server import StratumServer
+from minesploit.utils.miner import CPUMiner
+
+pool = StratumServer().start()
+miner = CPUMiner(threads=2, pool=pool, user="test.worker").start()
+
+assert pool.has_workers(), "No workers connected!"
+print(f"Hashrate: {miner.get_stats()['hashrate_khs']} kH/s")
+
+miner.stop()
+pool.stop()
+```
+
+Run with: `python examples/mining_example.py`
+
 ## Legal Notice
 
 This tool is for authorized security testing only. Users must have explicit

@@ -225,30 +225,28 @@ $ python -m minesploit.repl -c "list exploits"
 The framework includes a CPU miner utility that wraps mujina in Docker for generating real hashrate on a pool. This is useful for testing attacks that require actual mining activity (e.g., share-stealing attacks).
 
 ```python
-from minesploit.utils import CPUMiner, PoolConfig
+from minesploit.protocols.stratum.server import StratumServer
+from minesploit.utils.miner import CPUMiner
 
-# Using context manager (RAII - auto cleanup)
-with CPUMiner(threads=4) as miner:
-    miner.mine_at(PoolConfig(
-        host="pool.example.com",
-        port=3333,
-        user="bc1q...worker1",
-        password="x"
-    ))
-    
-    import time
-    time.sleep(60)  # mine for 60 seconds
-    
-    stats = miner.get_stats()
-    print(f"Hashrate: {stats['hashrate_khs']} kH/s")
-    print(f"Accepted: {stats['accepted']}")
+# Minimal hypothesis testing (10 lines)
+pool = StratumServer().start()
+miner = CPUMiner(threads=2, pool=pool, user="test.worker").start()
 
-# Container automatically stopped and removed
+assert pool.has_workers(), "No workers connected!"
+print(f"Hashrate: {miner.get_stats()['hashrate_khs']} kH/s")
 
-# Or fluent API without context manager
-miner = CPUMiner(threads=2)
-miner.mine_at(PoolConfig(host="localhost", port=3333, user="test"))
-# ... run exploit simultaneously ...
+miner.stop()
+pool.stop()
+```
+
+Or with explicit PoolConfig:
+
+```python
+from minesploit.utils.miner import CPUMiner, PoolConfig
+
+pool = PoolConfig(host="pool.example.com", port=3333, user="address.worker")
+miner = CPUMiner(threads=4, pool=pool).start()
+# ... run exploit ...
 miner.stop()
 ```
 
