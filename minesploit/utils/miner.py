@@ -14,7 +14,7 @@ class PoolConfig:
 
 
 class CPUMiner:
-    IMAGE = "pmietlicki/cpuminer:latest"
+    IMAGE = "ghcr.io/256foundation/mujina-minerd:main"
 
     def __init__(
         self,
@@ -39,7 +39,6 @@ class CPUMiner:
         return self.start()
 
     def _get_pool_config(self) -> PoolConfig:
-        import platform
 
         if self._pool:
             if hasattr(self._pool, "host") and hasattr(self._pool, "port"):
@@ -70,15 +69,15 @@ class CPUMiner:
             "--network",
             "host",
             "-e",
-            f"POOL=stratum+tcp://{pool.host}:{pool.port}",
+            "MUJINA_USB_DISABLE=1",
             "-e",
-            f"USER={pool.user}",
+            f"MUJINA_CPUMINER_THREADS={self.threads}",
             "-e",
-            f"PASS={pool.password}",
+            f"MUJINA_POOL_URL=stratum+tcp://{pool.host}:{pool.port}",
             "-e",
-            "ALGO=sha256d",
+            f"MUJINA_POOL_USER={pool.user}",
             "-e",
-            f"NB_THREADS={self.threads}",
+            f"MUJINA_POOL_PASS={pool.password}",
             self.IMAGE,
         ]
 

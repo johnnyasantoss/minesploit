@@ -4,16 +4,14 @@
 import asyncio
 
 from minesploit.protocols.stratum.client import StratumClient
+from minesploit.protocols.stratum.server import StratumServer
 
 
-async def test():
-    from minesploit.protocols.stratum.server import StratumServer
-
-    pool = StratumServer(verbosity="error").start()
+async def main():
+    pool = StratumServer(verbosity="debug").start()
     await asyncio.sleep(0.5)
-
     client = StratumClient(
-        host="127.0.0.1", port=3333, worker_name="test.worker", verbosity="error"
+        host="127.0.0.1", port=3333, worker_name="test.worker", verbosity="debug"
     )
     await client.connect()
     await client.subscribe()
@@ -22,4 +20,4 @@ async def test():
     pool.stop()
 
 
-asyncio.run(test())
+asyncio.run(main())
