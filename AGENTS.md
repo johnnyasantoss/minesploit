@@ -43,16 +43,19 @@ minesploit/
 ├── LICENSE                   # GNU GPL v3
 ├── pyproject.toml           # Python project config
 ├── README.md                # Quick start guide
+├── justfile                 # Development commands
+├── tests.ms                 # REPL test script
 ├── minesploit/              # Framework core
-│   ├── __init__.py
+│   ├── __init__.py          # Package init, exports Exploit, Scanner, ExploitDatabase
+│   ├── __main__.py          # Entry point for python -m minesploit
 │   ├── framework.py         # Base Exploit, Scanner classes
+│   ├── database.py          # CVE/exploit registry
 │   ├── protocols/           # Protocol implementations
 │   │   ├── stratum/
 │   │   │   ├── client.py    # Stratum v1 client
-│   │   │   ├── server.py    # Stratum v1 server mock
-│   │   │   └── exploits/
-│   │   ├── stratumv2/       # Uses: stratumv2/stratumv2
-│   │   └── p2pool/          # References: p2pool/p2pool
+│   │   │   └── server.py   # Stratum v1 server mock
+│   │   ├── stratumv2/       # Stratum V2 client
+│   │   └── p2pool/         # P2Pool scanner
 │   ├── exploits/            # Exploit modules
 │   │   ├── __init__.py
 │   │   ├── cve_2013_stratum_duplicate_shares.py
@@ -63,15 +66,15 @@ minesploit/
 │   │   ├── cve_2024_blocktxn_dos.py
 │   │   ├── cve_2024_52921_mutated_blocks.py
 │   │   └── cve_2019_headers_oom.py
-│   ├── database.py          # CVE/exploit registry
 │   └── utils/
 │       ├── networking.py    # TCP/SSL utilities
-│       ├── crypto.py        # Bitcoin crypto helpers
-│       └── parser.py        # Message parsing
-├── repl/                    # REPL application
+│       ├── crypto.py       # Bitcoin crypto helpers
+│       └── parser.py       # Message parsing
+├── minesploit/repl/         # REPL application
 │   ├── __init__.py
+│   ├── __main__.py         # Entry point for python -m minesploit.repl
 │   └── shell.py            # Main REPL loop
-└── tests/
+└── tests/                  # Unit tests
 ```
 
 ### External Dependencies (Existing Implementations)
@@ -94,7 +97,7 @@ For protocol testing where we don't need introspection, use these existing imple
 Each exploit module follows this pattern:
 
 ```python
-from minesploit.framework import Exploit
+from minesploit.framework import Exploit, ExploitResult
 
 class CVE_XXXX_XXXXXX(Exploit):
     """Exploit description and CVE details"""
@@ -107,20 +110,20 @@ class CVE_XXXX_XXXXXX(Exploit):
     discovered_by = "Researcher Name"
     disclosure_date = "2024-01-15"
 
-    def check(self, target):
+    def check(self, target, port=None, **kwargs) -> ExploitResult:
         """Verify if target is vulnerable"""
         # Implementation
-        return vulnerable, details
+        return ExploitResult(success=True, message="Target is vulnerable")
 
-    def exploit(self, target):
+    def exploit(self, target, port=None, **kwargs) -> ExploitResult:
         """Run exploit against target"""
         # Implementation
-        return success, output
+        return ExploitResult(success=True, message="Exploit completed")
 
-    def verify(self, target):
+    def verify(self, target, port=None, **kwargs) -> ExploitResult:
         """Verify exploit succeeded"""
         # Implementation
-        return verified, evidence
+        return ExploitResult(success=True, message="Verified")
 ```
 
 ---
@@ -153,7 +156,7 @@ class CVE_XXXX_XXXXXX(Exploit):
 | CVE-2025-54604 | Disk fill from spoofed self connections | 3.7 | Implemented |
 | CVE-2025-54605 | Disk fill from invalid blocks | 3.7 | Implemented |
 | CVE-2024-35202 | blocktxn message assertion DoS | 7.5 | Implemented |
-| CVE-2019-25220 | Headers OOM (memory exhaustion) | 7.0 | Planned |
+| CVE-2019-25220 | Headers OOM (memory exhaustion) | 7.0 | Implemented |
 | CVE-2024-52916 | Low-difficulty header spam DoS | 6.5 | Planned |
 
 ### Mining Software (cgminer/bfgminer)
@@ -177,7 +180,7 @@ class CVE_XXXX_XXXXXX(Exploit):
 
 ```python
 from minesploit import Minesploit
-from minesploit.exploits import CVE_XXXX_XXXXXX
+from minesploit.exploits import CVE_2016_STRATUM_MASS_DUPLICATE
 
 # Initialize framework
 ms = Minesploit()
@@ -185,8 +188,10 @@ ms = Minesploit()
 # List available exploits
 ms.list_exploits()
 
-# Run a specific exploit
-exploit = CVE_XXXX_XXXXXX()
+# Get a specific exploit
+exploit = ms.get_exploit("cve_2016_stratum_mass_duplicate")
+
+# Run the exploit
 result = exploit.check(target="192.168.1.100", port=8333)
 ```
 
@@ -213,16 +218,6 @@ minesploit (cve_2016_stratum_mass_duplicate)> exit
 $ python -m minesploit.repl -s script.ms
 $ python -m minesploit.repl -c "list exploits"
 ```
-
----
-
-## Metasploit Integration
-
-Minesploit is designed to work alongside Metasploit:
-
-1. **Complementary Testing** - Use Metasploit for general vulnerabilities, Minesploit for mining-specific ones
-2. **Output Compatibility** - Export results in formats compatible with Metasploit reports
-3. **Future: MSGRPC** - Plan to add remote execution via Metasploit's RPC API
 
 ---
 
