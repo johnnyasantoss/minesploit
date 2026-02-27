@@ -6,15 +6,38 @@ from typing import Any
 
 
 class MinesploitShell(cmd.Cmd):
-    intro = """╔═══════════════════════════════════════════════════════════╗
-║           Minesploit - Bitcoin Mining Security Framework      ║
-║                  Security Research for White Hats            ║
-╠═══════════════════════════════════════════════════════════╣
-║ Type 'help' for commands, 'list exploits' to see available ║
-║ Type 'exit' or 'quit' to leave                            ║
-╚═══════════════════════════════════════════════════════════╝
+    intro = """
+ Minesploit | Bitcoin Mining Security Research Framework
+─────────────────────────────────────────────────────────
+ [✓] Authorized security testing only
+ [✓] CVE-based exploit modules
+ [✓] Stratum, Bitcoin Core, cgminer testing
+
+ COMMANDS                     DESCRIPTION
+─────────────────────────────────────────────────────────
+ help                         Show this help message
+ list exploits                List all available exploits
+ search <query>               Search exploits by name/CVE
+ use <exploit>                Select an exploit module
+ set <option> <value>         Set option (RHOSTS, RPORT, etc)
+ show options                 Show current configuration
+ check                        Check if target is vulnerable
+ run                          Run exploit against target
+ verify                       Verify exploit success
+ exit/quit                    Exit the shell
+
+ EXAMPLES
+─────────────────────────────────────────────────────────
+ minesploit> set RHOSTS 192.168.1.100
+ minesploit> set RPORT 3333
+ minesploit> use cve_2024_blocktxn_dos
+ minesploit> check
+
+─────────────────────────────────────────────────────────
+ "Stack sats, not vulnz" | v0.1.0
 """
     prompt = "minesploit> "
+    use_rawinput = True
     current_exploit: Any = None
 
     def __init__(self):
@@ -22,6 +45,55 @@ class MinesploitShell(cmd.Cmd):
         self.exploits: dict[str, Any] = {}
         self.target: str | None = None
         self.port: int | None = None
+        self._ctrl_c_pressed = False
+        self._ctrl_d_pressed = False
+        self._interactive = sys.stdin.isatty()
+
+    def cmdloop(self, intro=None):
+        if intro:
+            print(intro)
+
+        while True:
+            try:
+                if self._interactive:
+                    line = input(self.prompt)
+                else:
+                    line = sys.stdin.readline()
+                    if not line:
+                        if self._ctrl_d_pressed:
+                            print("\nGoodbye!")
+                            break
+                        print("\nPress Ctrl+D again to exit")
+                        self._ctrl_d_pressed = True
+                        continue
+                    line = line.strip()
+                    if line:
+                        print(f"{self.prompt}{line}")
+
+                if not line:
+                    continue
+
+                stop = self.onecmd(line)
+                if stop:
+                    break
+
+            except KeyboardInterrupt:
+                if self._ctrl_c_pressed:
+                    print("\nGoodbye!")
+                    break
+                print("\nPress Ctrl+C again to exit")
+                self._ctrl_c_pressed = True
+            except EOFError:
+                if self._ctrl_d_pressed:
+                    print("\nGoodbye!")
+                    break
+                print("\nPress Ctrl+D again to exit")
+                self._ctrl_d_pressed = True
+
+    def onecmd(self, line: str) -> bool:
+        self._ctrl_c_pressed = False
+        self._ctrl_d_pressed = False
+        return super().onecmd(line)
 
     def do_help(self, arg: str):
         """Show available commands"""
@@ -215,7 +287,36 @@ Available Commands:
 
 
 def main():
-    MinesploitShell().cmdloop()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Minesploit REPL")
+    parser.add_argument(
+        "-s",
+        "--script",
+        type=str,
+        help="Run commands from a script file",
+    )
+    parser.add_argument(
+        "-c",
+        "--command",
+        type=str,
+        help="Run a single command",
+    )
+    args = parser.parse_args()
+
+    shell = MinesploitShell()
+
+    if args.script:
+        with open(args.script) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    print(f"minesploit> {line}")
+                    shell.onecmd(line)
+    elif args.command:
+        shell.onecmd(args.command)
+    else:
+        shell.cmdloop()
 
 
 if __name__ == "__main__":

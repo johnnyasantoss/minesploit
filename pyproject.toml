@@ -36,6 +36,7 @@ dev = [
 ]
 
 [project.optional-dependencies]
+build = ["pyinstaller>=6.0"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
@@ -44,7 +45,7 @@ dev = [
 ]
 
 [project.scripts]
-minesploit = "minesploit.repl.shell:main"
+minesploit = "repl.shell:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
