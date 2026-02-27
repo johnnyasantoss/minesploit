@@ -56,10 +56,12 @@ minesploit/
 │   ├── exploits/            # Exploit modules
 │   │   ├── __init__.py
 │   │   ├── cve_2013_stratum_duplicate_shares.py
+│   │   ├── cve_2015_20111_miniupnpc_rce.py
 │   │   ├── cve_2016_stratum_mass_duplicate.py
 │   │   ├── cve_2018_cgminer_api_overflow.py
 │   │   ├── cve_2018_cgminer_path_traversal.py
 │   │   ├── cve_2024_blocktxn_dos.py
+│   │   ├── cve_2024_52921_mutated_blocks.py
 │   │   └── cve_2019_headers_oom.py
 │   ├── database.py          # CVE/exploit registry
 │   └── utils/
@@ -137,6 +139,19 @@ class CVE_XXXX_XXXXXX(Exploit):
 
 | CVE | Description | CVSS | Status |
 |-----|-------------|------|--------|
+| CVE-2018-17144 | Inflation via duplicate input spending | 9.0 | Implemented |
+| CVE-2024-52914 | Orphan transaction handling DoS | 7.5 | Implemented |
+| CVE-2017-18350 | SOCKS proxy buffer overflow | 7.5 | Implemented |
+| CVE-2024-52912 | Netsplit due to timestamp overflow | 5.3 | Implemented |
+| CVE-2024-52915 | Memory DoS via huge INV messages | 7.5 | Implemented |
+| CVE-2024-52913 | Transaction censorship via re-request | 5.3 | Implemented |
+| CVE-2015-20111 | miniupnpc buffer overflow RCE | 5.3 | Implemented |
+| CVE-2024-52921 | Mutated blocks hindering propagation | 5.3 | Implemented |
+| CVE-2024-52920 | DoS via huge GETDATA messages | 7.5 | Implemented |
+| CVE-2024-52919 | Remote crash via addr message spam | 6.5 | Implemented |
+| CVE-2025-46598 | CPU DoS from unconfirmed transaction processing | 3.7 | Implemented |
+| CVE-2025-54604 | Disk fill from spoofed self connections | 3.7 | Implemented |
+| CVE-2025-54605 | Disk fill from invalid blocks | 3.7 | Implemented |
 | CVE-2024-35202 | blocktxn message assertion DoS | 7.5 | Implemented |
 | CVE-2019-25220 | Headers OOM (memory exhaustion) | 7.0 | Planned |
 | CVE-2024-52916 | Low-difficulty header spam DoS | 6.5 | Planned |
