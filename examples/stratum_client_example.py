@@ -67,7 +67,7 @@ class StratumClient:
     def __init__(
         self,
         host: str = "127.0.0.1",
-        port: int = 3333,
+        port: int = 3334,
         worker_name: str = "worker1",
         worker_password: str = "x",
     ):
@@ -324,7 +324,7 @@ class StratumClient:
 async def main():
     client = StratumClient(
         host="127.0.0.1",
-        port=3333,
+        port=3334,
         worker_name="worker1",
         worker_password="x",
     )
