@@ -231,16 +231,16 @@ Minesploit is designed to work alongside Metasploit:
 
 ### Testing
 
-- Unit tests for framework utilities
-- Integration tests with mock servers
-- Always test against controlled targets
+- Tests are run via the REPL script interpreter using `-s` or `--script`
+- Example: `python -m minesploit.repl -s tests.ms` where `tests.ms` contains REPL commands
+- Run `ruff check . && mypy minesploit/` for lint and typecheck before committing
 
 ### Version Control
 
 - **Atomic commits** - Each commit should contain a single, focused change
 - **Single responsibility** - One feature, one fix, or one refactor per commit
 - **Commit message format**: `{type}: {short description}` where type is `feat`, `fix`, `docs`, `refactor`, `test`
-- **Build before commit** - Run tests, lint, and typecheck: `ruff check . && mypy minesploit/ && pytest` or use the `test` command in REPL
+- **Build before commit** - Run lint and typecheck: `ruff check . && mypy minesploit/`
 - **Never commit broken code** - All tests should pass before committing
 - **Update AGENTS.md** - After implementing any feature, change, or new exploit, update this file as the single source of truth
 
