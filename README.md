@@ -14,6 +14,16 @@ python -m minesploit.repl
 minesploit
 ```
 
+## Running Scripts
+
+Run Python scripts with the framework pre-loaded:
+
+```bash
+minesploit -s examples/mining_example.py
+```
+
+The `-s` flag runs a Python script with all framework utilities imported.
+
 ## Available Exploits
 
 ### Bitcoin Core Node Vulnerabilities
@@ -67,10 +77,11 @@ Test share-stealing attacks and other CVEs that require real hashrate:
 
 ```python
 from minesploit.protocols.stratum.server import StratumServer
-from minesploit.utils.miner import CPUMiner
+from minesploit.utils.miner import CPUMiner, PoolConfig
 
 pool = StratumServer().start()
-miner = CPUMiner(threads=2, pool=pool, user="test.worker").start()
+config = pool.get_config()
+miner = CPUMiner(threads=2, pool=PoolConfig(**config, user="test.worker")).start()
 
 assert pool.has_workers(), "No workers connected!"
 print(f"Hashrate: {miner.get_stats()['hashrate_khs']} kH/s")
@@ -79,7 +90,7 @@ miner.stop()
 pool.stop()
 ```
 
-Run with: `python examples/mining_example.py`
+Run with: `minesploit -s examples/mining_example.py`
 
 ## Legal Notice
 

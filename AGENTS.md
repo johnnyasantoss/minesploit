@@ -6,6 +6,8 @@
 
 **Purpose:** Help security professionals identify vulnerabilities in Bitcoin mining software, protocols, and infrastructure through systematic testing using publicly disclosed CVEs (Common Vulnerabilities and Exposures).
 
+**Usage**: The framework is made of multiple utility classes and cves that can be used as building blocks for testing hypothesis in simple few lines of python code. It's a fluent, simple, composable interface for testing attacks scenarios.
+
 **Legal Notice:** This tool is intended for authorized security testing only. Users must have explicit written permission from the system owner before testing any target. Unauthorized access to computer systems is illegal.
 
 ---
@@ -226,11 +228,12 @@ The framework includes a CPU miner utility that wraps mujina in Docker for gener
 
 ```python
 from minesploit.protocols.stratum.server import StratumServer
-from minesploit.utils.miner import CPUMiner
+from minesploit.utils.miner import CPUMiner, PoolConfig
 
 # Minimal hypothesis testing (10 lines)
 pool = StratumServer().start()
-miner = CPUMiner(threads=2, pool=pool, user="test.worker").start()
+config = pool.get_config()
+miner = CPUMiner(threads=2, pool=PoolConfig(**config, user="test.worker")).start()
 
 assert pool.has_workers(), "No workers connected!"
 print(f"Hashrate: {miner.get_stats()['hashrate_khs']} kH/s")
@@ -238,6 +241,8 @@ print(f"Hashrate: {miner.get_stats()['hashrate_khs']} kH/s")
 miner.stop()
 pool.stop()
 ```
+
+Run with: `minesploit -s examples/mining_example.py`
 
 Or with explicit PoolConfig:
 
@@ -298,6 +303,12 @@ just dist        # Build binary release
 2. **No weaponization** - Exploits should demonstrate vulnerability, not provide malware
 3. **Documentation** - Every exploit needs CVE reference, affected versions, usage examples
 4. **Safe defaults** - `check()` methods should be safe; `exploit()` requires explicit confirmation
+
+### For agents/devs
+
+- ALWAYS use TODO lists
+- ALWAYS prefer existing framework utilities
+- ALWAYS prefer encapsulating external dependencies in docker containers (like CPUMiner)
 
 ### Code Style
 
