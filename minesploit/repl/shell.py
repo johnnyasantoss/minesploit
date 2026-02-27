@@ -343,19 +343,25 @@ def main():
     args = parser.parse_args()
 
     shell = MinesploitShell()
+    import asyncio
 
     if args.script:
-        # Execute as Python with framework imports
         namespace = _create_script_namespace()
 
         with open(args.script) as f:
             script_content = f.read()
 
-        # Skip shebang line if present
         if script_content.startswith("#!/"):
             script_content = script_content.split("\n", 1)[1] if "\n" in script_content else ""
 
-        exec(script_content, namespace)
+        if "await " in script_content or "async def" in script_content:
+            wrapped = f"async def _run():\n" + "\n".join(
+                "    " + line for line in script_content.split("\n")
+            )
+            exec(wrapped, namespace)
+            asyncio.run(namespace["_run"]())
+        else:
+            exec(script_content, namespace)
     elif args.command:
         if args.command.endswith(".ms"):
             # Execute .ms file as REPL commands
