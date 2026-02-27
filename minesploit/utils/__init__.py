@@ -1,6 +1,7 @@
 """Utility modules for Minesploit"""
 
 from minesploit.utils.crypto import double_sha256, hash256, merkle_root
+from minesploit.utils.miner import CPUMiner, PoolConfig
 from minesploit.utils.networking import SSLClient, TCPClient
 from minesploit.utils.parser import JSONRPCParser, StratumParser
 
@@ -12,4 +13,6 @@ __all__ = [
     "merkle_root",
     "JSONRPCParser",
     "StratumParser",
+    "CPUMiner",
+    "PoolConfig",
 ]
