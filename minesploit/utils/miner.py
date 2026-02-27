@@ -17,13 +17,7 @@ class CPUMiner:
     IMAGE = "ghcr.io/256foundation/mujina-minerd:main"
 
     def __init__(
-        self,
-        threads: int = 1,
-        pool: PoolConfig | None = None,
-        host: str = "localhost",
-        port: int = 3333,
-        user: str = "test.worker",
-        password: str = "x",
+        self, threads=1, pool=None, host="localhost", port=3333, user="test.worker", password="x"
     ):
         self.threads = threads
         self._pool = pool
@@ -31,15 +25,14 @@ class CPUMiner:
         self._port = port
         self._user = user
         self._password = password
-        self._container_name: str | None = None
+        self._container_name = None
         self._running = False
 
-    def mine_at(self, pool: PoolConfig) -> "CPUMiner":
+    def mine_at(self, pool):
         self._pool = pool
         return self.start()
 
-    def _get_pool_config(self) -> PoolConfig:
-
+    def _get_pool_config(self):
         if self._pool:
             if hasattr(self._pool, "host") and hasattr(self._pool, "port"):
                 return PoolConfig(
@@ -56,7 +49,7 @@ class CPUMiner:
             password=self._password,
         )
 
-    def start(self) -> "CPUMiner":
+    def start(self):
         pool = self._get_pool_config()
         container_name = f"minesploit-miner-{id(self)}"
 
@@ -81,7 +74,7 @@ class CPUMiner:
             self.IMAGE,
         ]
 
-        subprocess.run(["docker", "pull", self.image], capture_output=True)
+        subprocess.run(["docker", "pull", self.IMAGE], capture_output=True)
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"Failed to start miner: {result.stderr}")
@@ -91,7 +84,7 @@ class CPUMiner:
         time.sleep(2)
         return self
 
-    def get_stats(self) -> dict:
+    def get_stats(self):
         if not self._running or not self._container_name:
             return {"running": False}
 
@@ -121,7 +114,7 @@ class CPUMiner:
             "rejected": rejected,
         }
 
-    def stop(self) -> None:
+    def stop(self):
         if self._container_name:
             subprocess.run(["docker", "stop", self._container_name], capture_output=True)
             subprocess.run(["docker", "rm", self._container_name], capture_output=True)
@@ -129,11 +122,11 @@ class CPUMiner:
         self._running = False
 
     @property
-    def is_running(self) -> bool:
+    def is_running(self):
         return self._running
 
     @property
-    def image(self) -> str:
+    def image(self):
         return self.IMAGE
 
     def __enter__(self):
