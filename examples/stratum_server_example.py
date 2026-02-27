@@ -63,7 +63,11 @@ def log(level: str, client_id: str, message: str, data: bytes | None = None, dir
     print(f"{prefix} {level_color}{level}{Colors.RESET}: {message}")
 
     if data:
-        print(hexdump(data, prefix + " "))
+        try:
+            msg_str = data.decode("utf-8").strip()
+            print(f"{prefix} {msg_str}")
+        except:
+            print(hexdump(data, prefix + " "))
     sys.stdout.flush()
 
 

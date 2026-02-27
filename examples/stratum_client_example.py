@@ -59,7 +59,11 @@ def log(level: str, message: str, data: bytes | None = None, direction: str = ""
     print(f"{prefix} {level_color}{level}{Colors.RESET}: {message}")
 
     if data:
-        print(hexdump(data, prefix + " "))
+        try:
+            msg_str = data.decode("utf-8").strip()
+            print(f"{prefix} {msg_str}")
+        except:
+            print(hexdump(data, prefix + " "))
     sys.stdout.flush()
 
 

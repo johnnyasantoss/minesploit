@@ -49,7 +49,11 @@ class StratumStealProxy:
         prefix = f"[{timestamp}] [{direction}]"
         print(prefix, message)
         if data:
-            print(prefix, data.decode("utf-8", errors="replace"))
+            try:
+                msg_str = data.decode("utf-8").strip()
+                print(f"{prefix} {msg_str}")
+            except:
+                pass
 
     async def handle_client(
         self,
