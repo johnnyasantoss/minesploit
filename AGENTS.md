@@ -33,7 +33,7 @@
 ### Two-Part System
 
 1. **Framework** (`minesploit/`) - Python library of exploit modules
-2. **REPL** (`repl/`) - Interactive Python shell for running exploits
+2. **REPL** (`minesploit/repl/`) - Interactive Python shell for running exploits
 
 ### Directory Structure
 
@@ -68,9 +68,7 @@ minesploit/
 │       └── parser.py        # Message parsing
 ├── repl/                    # REPL application
 │   ├── __init__.py
-│   ├── shell.py            # Main REPL loop
-│   ├── commands.py         # CLI commands
-│   └── completer.py        # Tab completion
+│   └── shell.py            # Main REPL loop
 └── tests/
 ```
 
@@ -215,6 +213,39 @@ Minesploit is designed to work alongside Metasploit:
 
 ## Development Guidelines
 
+### MUST Use uv for Package Management
+
+This project uses **uv** for all Python package management. Never use pip directly.
+
+```bash
+# Install dependencies
+uv pip install -e .
+
+# Install with extras
+uv pip install -e ".[dev,build]"
+
+# Run commands (or use just - see below)
+uv run python -m minesploit.repl
+uv run pytest
+uv run ruff check .
+uv run mypy minesploit/
+
+# Build binary
+uv run pyinstaller minesploit.spec
+```
+
+### Just Commands
+
+This project uses [just](https://github.com/casey/just) for common tasks:
+
+```bash
+just lint        # Run ruff linter
+just check       # Run mypy type checker
+just test        # Run tests via REPL script
+just run         # Start the REPL
+just dist        # Build binary release
+```
+
 ### For Contributors
 
 1. **Only public CVEs** - Only implement vulnerabilities with public disclosure
@@ -243,6 +274,9 @@ Minesploit is designed to work alongside Metasploit:
 - **Build before commit** - Run lint and typecheck: `ruff check . && mypy minesploit/`
 - **Never commit broken code** - All tests should pass before committing
 - **Update AGENTS.md** - After implementing any feature, change, or new exploit, update this file as the single source of truth
+- **Pull with rebase** - Always use `git pull --rebase` instead of merge to keep history clean
+- **Handle conflicts** - If there are merge conflicts, revert to user instead of resolving yourself
+- **No global/git config modifications** - Never modify the user's machine, use global configs, or files outside the project folder
 
 ---
 
