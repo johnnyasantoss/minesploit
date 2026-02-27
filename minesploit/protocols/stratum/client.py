@@ -2,11 +2,14 @@
 
 from typing import Any
 
+from minesploit.protocols.mining import MiningClient
 from minesploit.utils.networking import TCPClient
 from minesploit.utils.parser import StratumParser
 
 
-class StratumClient:
+class StratumClient(MiningClient):
+    """Stratum V1 mining protocol client implementation"""
+
     def __init__(
         self,
         host: str,
@@ -19,13 +22,29 @@ class StratumClient:
         self.worker_name = worker_name
         self.worker_password = worker_password
         self.client: TCPClient | None = None
-        self.authorized = False
-        self.subscribed = False
+        self._authorized = False
+        self._subscribed = False
         self.session_id: str | None = None
         self.extra_nonce_1: str | None = None
         self.extra_nonce_2_length: int = 0
-        self.current_job: dict[str, Any] | None = None
+        self._current_job: dict[str, Any] | None = None
         self.msg_id = 1
+
+    @property
+    def version(self) -> str:
+        return "v1"
+
+    @property
+    def current_job(self) -> dict[str, Any] | None:
+        return self._current_job
+
+    @property
+    def authorized(self) -> bool:
+        return self._authorized
+
+    @property
+    def subscribed(self) -> bool:
+        return self._subscribed
 
     async def connect(self) -> bool:
         self.client = TCPClient(self.host, self.port)
@@ -48,7 +67,7 @@ class StratumClient:
                 if parsed and "result" in parsed:
                     result = parsed["result"]
                     if result and result[0]:
-                        self.subscribed = True
+                        self._subscribed = True
                         self.session_id = result[0]
                         self.extra_nonce_1 = result[1][0]
                         self.extra_nonce_2_length = result[1][1]
@@ -56,13 +75,16 @@ class StratumClient:
 
         return False
 
-    async def authorize(self) -> bool:
+    async def authorize(self, worker_name: str = "", worker_password: str = "") -> bool:
         if not self.client:
             return False
 
+        name = worker_name or self.worker_name or "anonymous"
+        password = worker_password or self.worker_password or "x"
+
         msg = StratumParser.mining_authorize(
-            self.worker_name or "anonymous",
-            self.worker_password or "x",
+            name,
+            password,
         )
 
         if await self.client.send(msg):
@@ -70,9 +92,9 @@ class StratumClient:
             if response:
                 parsed = StratumParser.parse_message(response)
                 if parsed and "result" in parsed:
-                    self.authorized = bool(parsed["result"])
+                    self._authorized = bool(parsed["result"])
 
-        return self.authorized
+        return self._authorized
 
     async def submit(
         self,
@@ -116,7 +138,7 @@ class StratumClient:
                 params = parsed.get("params", [])
 
                 if method == "mining.notify":
-                    self.current_job = {
+                    self._current_job = {
                         "job_id": params[0],
                         "prev_hash": params[1],
                         "coinb1": params[2],
