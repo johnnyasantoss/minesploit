@@ -33,6 +33,7 @@ def test_stratum_parser_mining_submit():
 def test_jsonrpc_parser_create_request():
     msg = JSONRPCParser.create_request("test.method", ["param1"], msg_id=1)
     parsed = JSONRPCParser.parse_response(msg)
+    assert parsed is not None
     assert parsed["method"] == "test.method"
     assert parsed["params"] == ["param1"]
     assert parsed["id"] == 1
@@ -41,6 +42,7 @@ def test_jsonrpc_parser_create_request():
 def test_jsonrpc_parser_parse_response():
     data = b'{"id": 1, "result": "success", "error": null}\n'
     parsed = JSONRPCParser.parse_response(data)
+    assert parsed is not None
     assert parsed["result"] == "success"
     assert parsed["error"] is None
 
@@ -51,7 +53,13 @@ def test_jsonrpc_parser_parse_invalid():
 
 
 def test_btcnode_parser_parse_message():
-    data = b"\xf9\xbe\xb4\xd9version\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    data = (
+        b"\xf9\xbe\xb4\xd9"
+        b"version\x00\x00\x00\x00\x00\x00"
+        b"\x00\x00\x00\x00"
+        b"\x00\x00\x00\x00"
+        b"\x00\x00\x00\x00"
+    )
     parsed = BTCNodeParser.parse_message(data)
     assert parsed is not None
     assert parsed["network"] == "mainnet"

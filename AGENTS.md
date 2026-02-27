@@ -240,7 +240,7 @@ Minesploit is designed to work alongside Metasploit:
 - **Atomic commits** - Each commit should contain a single, focused change
 - **Single responsibility** - One feature, one fix, or one refactor per commit
 - **Commit message format**: `{type}: {short description}` where type is `feat`, `fix`, `docs`, `refactor`, `test`
-- **Build before commit** - Run lint/typecheck: `ruff check . && mypy minesploit/`
+- **Build before commit** - Run tests, lint, and typecheck: `ruff check . && mypy minesploit/ && pytest` or use the `test` command in REPL
 - **Never commit broken code** - All tests should pass before committing
 - **Update AGENTS.md** - After implementing any feature, change, or new exploit, update this file as the single source of truth
 
