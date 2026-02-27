@@ -1,6 +1,7 @@
 """Cryptographic utilities for Bitcoin mining"""
 
 import hashlib
+import time
 
 
 def hash256(data: bytes) -> bytes:
@@ -53,3 +54,47 @@ def decode_hex(hex_str: str) -> bytes:
 
 def reverse_hex(hex_str: str) -> str:
     return bytes.fromhex(hex_str)[::-1].hex()
+
+
+def validate_share_format(
+    nonce: str, ntime: str, extra_nonce_2: str, extra_nonce_2_length: int
+) -> tuple[bool, list[str], list[str]]:
+    checks: list[str] = []
+    errors: list[str] = []
+
+    if len(nonce) != 8:
+        errors.append(f"Invalid nonce length: {len(nonce)} (expected 8)")
+    else:
+        checks.append(f"Nonce format valid: {nonce}")
+
+    if len(ntime) != 8:
+        errors.append(f"Invalid ntime length: {len(ntime)} (expected 8)")
+    else:
+        try:
+            ntime_int = int(ntime, 16)
+            current_time = int(time.time())
+            if abs(ntime_int - current_time) > 7200:
+                errors.append(f"ntime too far from current time: {ntime_int}")
+            else:
+                checks.append(f"NTime valid: {ntime_int}")
+        except ValueError:
+            errors.append(f"Invalid ntime hex: {ntime}")
+
+    expected_extra_nonce_2_len = extra_nonce_2_length * 2
+    if len(extra_nonce_2) != expected_extra_nonce_2_len:
+        errors.append(
+            f"ExtraNonce2 length mismatch: {len(extra_nonce_2)} "
+            f"(expected {expected_extra_nonce_2_len})"
+        )
+    else:
+        checks.append(f"ExtraNonce2 format valid: {extra_nonce_2}")
+
+    is_valid = len(errors) == 0
+    return (is_valid, checks, errors)
+
+
+def validate_share_job(job: dict) -> tuple[bool, list[str]]:
+    required_fields = ["coinb1", "coinb2", "version", "nbits", "merkle_branch"]
+    missing_fields = [field for field in required_fields if field not in job]
+    is_valid = len(missing_fields) == 0
+    return (is_valid, missing_fields)
