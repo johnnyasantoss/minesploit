@@ -379,9 +379,9 @@ def _create_script_namespace() -> dict:
     # Import stdlib
     import asyncio
     import json
+    import pathlib
     import random
     import time
-    import pathlib
 
     namespace.update(
         {
@@ -394,9 +394,10 @@ def _create_script_namespace() -> dict:
     )
 
     # Import framework core
-    from minesploit import Minesploit, Exploit, Scanner, ExploitDatabase
+    from minesploit import Minesploit
     from minesploit.database import ExploitDatabase as _ExploitDatabase
-    from minesploit.framework import Exploit as _Exploit, Scanner as _Scanner
+    from minesploit.framework import Exploit as _Exploit
+    from minesploit.framework import Scanner as _Scanner
 
     namespace.update(
         {
@@ -422,8 +423,8 @@ def _create_script_namespace() -> dict:
 
     # Import utilities
     def _import_utils():
-        from minesploit.utils.scanner import MiningServiceScanner
         from minesploit.utils.miner import CPUMiner, PoolConfig
+        from minesploit.utils.scanner import MiningServiceScanner
 
         return {
             "MiningServiceScanner": MiningServiceScanner,

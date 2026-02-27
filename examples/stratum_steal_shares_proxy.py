@@ -11,8 +11,8 @@ For testing against your own stratum server implementation only.
 import argparse
 import asyncio
 import json
-import signal
 import random
+import signal
 import string
 from datetime import datetime
 
@@ -104,7 +104,7 @@ class StratumStealProxy:
                                 continue
 
                             method = message.get("method")
-                            msg_id = message.get("id")
+                            message.get("id")
 
                             if method == "mining.authorize":
                                 self._miner_authorized = True
