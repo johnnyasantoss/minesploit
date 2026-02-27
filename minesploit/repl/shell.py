@@ -332,29 +332,121 @@ def main():
         "-s",
         "--script",
         type=str,
-        help="Run commands from a script file",
+        help="Run Python script file with framework imports",
     )
     parser.add_argument(
         "-c",
         "--command",
         type=str,
-        help="Run a single command",
+        help="Run REPL command(s) - string or .ms file",
     )
     args = parser.parse_args()
 
     shell = MinesploitShell()
 
     if args.script:
+        # Execute as Python with framework imports
+        namespace = _create_script_namespace()
+
         with open(args.script) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    print(f"minesploit> {line}")
-                    shell.onecmd(line)
+            script_content = f.read()
+
+        # Skip shebang line if present
+        if script_content.startswith("#!/"):
+            script_content = script_content.split("\n", 1)[1] if "\n" in script_content else ""
+
+        exec(script_content, namespace)
     elif args.command:
-        shell.onecmd(args.command)
+        if args.command.endswith(".ms"):
+            # Execute .ms file as REPL commands
+            with open(args.command) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        print(f"minesploit> {line}")
+                        shell.onecmd(line)
+        else:
+            # Execute single REPL command
+            shell.onecmd(args.command)
     else:
         shell.cmdloop()
+
+
+def _create_script_namespace() -> dict:
+    """Create namespace for script execution with framework imports."""
+    namespace: dict = {"__name__": "__main__"}
+
+    # Import stdlib
+    import asyncio
+    import json
+    import random
+    import time
+    import pathlib
+
+    namespace.update(
+        {
+            "asyncio": asyncio,
+            "json": json,
+            "random": random,
+            "time": time,
+            "pathlib": pathlib,
+        }
+    )
+
+    # Import framework core
+    from minesploit import Minesploit, Exploit, Scanner, ExploitDatabase
+    from minesploit.database import ExploitDatabase as _ExploitDatabase
+    from minesploit.framework import Exploit as _Exploit, Scanner as _Scanner
+
+    namespace.update(
+        {
+            "minesploit": Minesploit,
+            "Minesploit": Minesploit,
+            "Exploit": _Exploit,
+            "Scanner": _Scanner,
+            "ExploitDatabase": _ExploitDatabase,
+        }
+    )
+
+    # Import protocols (lazy-loaded via function to avoid import overhead)
+    def _import_stratum():
+        from minesploit.protocols.stratum.client import StratumClient
+        from minesploit.protocols.stratum.server import StratumServer
+        from minesploit.protocols.stratum.sniffer import StratumSniffer
+
+        return {
+            "StratumClient": StratumClient,
+            "StratumServer": StratumServer,
+            "StratumSniffer": StratumSniffer,
+        }
+
+    # Import utilities
+    def _import_utils():
+        from minesploit.utils.scanner import MiningServiceScanner
+        from minesploit.utils.miner import CPUMiner, PoolConfig
+
+        return {
+            "MiningServiceScanner": MiningServiceScanner,
+            "CPUMiner": CPUMiner,
+            "PoolConfig": PoolConfig,
+        }
+
+    namespace.update(_import_stratum())
+    namespace.update(_import_utils())
+
+    # Add crypto utilities
+    def _import_crypto():
+        from minesploit.utils.crypto import decode_hex, encode_hex, merkle_root
+
+        return {
+            "decode_hex": decode_hex,
+            "encode_hex": encode_hex,
+            "merkle_root": merkle_root,
+        }
+
+    namespace.update(_import_crypto())
+
+    return namespace
 
 
 if __name__ == "__main__":
