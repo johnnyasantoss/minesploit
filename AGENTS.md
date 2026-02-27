@@ -69,7 +69,8 @@ minesploit/
 │   └── utils/
 │       ├── networking.py    # TCP/SSL utilities
 │       ├── crypto.py       # Bitcoin crypto helpers
-│       └── parser.py       # Message parsing
+│       ├── parser.py       # Message parsing
+│       └── miner.py        # CPU miner (mujina Docker wrapper)
 ├── minesploit/repl/         # REPL application
 │   ├── __init__.py
 │   ├── __main__.py         # Entry point for python -m minesploit.repl
@@ -219,6 +220,43 @@ $ python -m minesploit.repl -s script.ms
 $ python -m minesploit.repl -c "list exploits"
 ```
 
+### CPU Miner Utility
+
+The framework includes a CPU miner utility that wraps mujina in Docker for generating real hashrate on a pool. This is useful for testing attacks that require actual mining activity (e.g., share-stealing attacks).
+
+```python
+from minesploit.utils import CPUMiner, PoolConfig
+
+# Using context manager (RAII - auto cleanup)
+with CPUMiner(threads=4) as miner:
+    miner.mine_at(PoolConfig(
+        host="pool.example.com",
+        port=3333,
+        user="bc1q...worker1",
+        password="x"
+    ))
+    
+    import time
+    time.sleep(60)  # mine for 60 seconds
+    
+    stats = miner.get_stats()
+    print(f"Hashrate: {stats['hashrate_khs']} kH/s")
+    print(f"Accepted: {stats['accepted']}")
+
+# Container automatically stopped and removed
+
+# Or fluent API without context manager
+miner = CPUMiner(threads=2)
+miner.mine_at(PoolConfig(host="localhost", port=3333, user="test"))
+# ... run exploit simultaneously ...
+miner.stop()
+```
+
+**Requirements:**
+- Docker must be running
+- Uses `ghcr.io/256foundation/mujina-minerd:latest` image
+- Requires `requests` library for API stats (optional, falls back to log parsing)
+
 ---
 
 ## Development Guidelines
@@ -269,6 +307,37 @@ just dist        # Build binary release
 - Async-first for network operations (asyncio)
 - Follow PEP 8 with 100-char line limit
 - No comments unless explaining complex logic
+
+### Utility Design Patterns (MANDATORY)
+
+All utilities, servers, clients, and helpers MUST follow these patterns:
+
+1. **RAII (Resource Acquisition Is Initialization)**
+   - Support context manager: `async with Utility() as u:`
+   - Auto-cleanup on exit
+
+2. **Fluent API**
+   - Simple start/stop: `u = Utility(); u.start(); u.stop()`
+   - Complexity hidden, impl details abstracted
+
+3. **Hypothesis Validation Focus**
+   - Designed for rapid hypothesis testing
+   - Clean interfaces for attack scenarios
+
+```python
+# RAII Pattern (recommended)
+async with StratumServer() as pool:
+    # run hypothesis
+    pass  # auto cleanup
+
+# Fluent Pattern
+pool = StratumServer()
+pool.start()
+# run hypothesis
+pool.stop()
+```
+
+All utilities should be hypothesis-first: minimal setup, clear attack surface, automatic cleanup.
 
 ### Testing
 

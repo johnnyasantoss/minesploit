@@ -3,7 +3,6 @@
 import asyncio
 import json
 import random
-import signal
 import string
 import sys
 import time
@@ -23,26 +22,13 @@ class Colors:
     BOLD = "\033[1m"
 
 
-def hexdump(data: bytes, prefix: str = "        ") -> str:
-    """Create a hexdump-style output of bytes"""
-    lines = []
-    for i in range(0, len(data), 16):
-        chunk = data[i : i + 16]
-        hex_part = " ".join(f"{b:02x}" for b in chunk)
-        ascii_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
-        hex_part = hex_part.ljust(48)
-        lines.append(f"{prefix}{hex_part} | {ascii_part}")
-    return "\n".join(lines)
-
-
-def log(
+def _log(
     level: str,
     client_id: str,
     message: str,
     data: bytes | None = None,
     direction: str = "",
 ):
-    """Colored logging with optional hex dump"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
     if direction == "RECV":
@@ -64,27 +50,85 @@ def log(
         level_color = Colors.WHITE
 
     print(f"{prefix} {level_color}{level}{Colors.RESET}: {message}")
-
-    if data:
-        print(hexdump(data, prefix + " "))
     sys.stdout.flush()
 
 
 class StratumServer:
-    def __init__(self, host: str = "0.0.0.0", port: int = 3333):
+    def __init__(self, host: str = "0.0.0.0", port: int = 3333, quiet: bool = False):
         self.host = host
         self.port = port
-        self.server: asyncio.Server | None = None
-        self.running = False
-        self.connections: dict[str, asyncio.StreamWriter] = {}
-        self.subscriptions: dict[str, dict[str, Any]] = {}
-        self.authorizations: dict[str, bool] = {}
-        self.share_log: list[dict[str, Any]] = []
-        self.current_job: dict[str, Any] = {}
-        self.job_broadcast_task: asyncio.Task | None = None
+        self.quiet = quiet
+        self._server: asyncio.Server | None = None
+        self._running = False
+        self._connections: dict[str, asyncio.StreamWriter] = {}
+        self._subscriptions: dict[str, dict[str, Any]] = {}
+        self._authorizations: dict[str, bool] = {}
+        self._share_log: list[dict[str, Any]] = []
+        self._current_job: dict[str, Any] = {}
+        self._job_broadcast_task: asyncio.Task | None = None
+        self._main_task: asyncio.Task | None = None
 
-    def generate_job(self) -> dict[str, Any]:
-        """Generate a fake mining job"""
+    def start(self) -> "StratumServer":
+        asyncio.get_event_loop().run_until_complete(self._start_async())
+        return self
+
+    def stop(self) -> None:
+        if self._running:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self._stop_async())
+
+    async def _start_async(self) -> None:
+        self._server = await asyncio.start_server(
+            self._handle_client,
+            self.host,
+            self.port,
+        )
+        self._running = True
+        addr = self._server.sockets[0].getsockname()
+
+        if not self.quiet:
+            print(
+                f"{Colors.BOLD}{Colors.GREEN}Stratum Server starting on {addr[0]}:{addr[1]}{Colors.RESET}"
+            )
+            print(f"{Colors.CYAN}Waiting for connections...{Colors.RESET}")
+            sys.stdout.flush()
+
+        self._job_broadcast_task = asyncio.create_task(self._broadcast_job())
+
+        self._main_task = asyncio.create_task(self._server.serve_forever())
+
+    async def _stop_async(self) -> None:
+        self._running = False
+        if self._job_broadcast_task:
+            self._job_broadcast_task.cancel()
+            try:
+                await self._job_broadcast_task
+            except asyncio.CancelledError:
+                pass
+
+        if not self.quiet:
+            print(f"\n{Colors.YELLOW}Shutting down...{Colors.RESET}")
+
+        for _client_id, writer in list(self._connections.items()):
+            writer.close()
+            await writer.wait_closed()
+
+        if self._server:
+            self._server.close()
+            await self._server.wait_closed()
+
+        if not self.quiet:
+            print(f"{Colors.GREEN}Server stopped.{Colors.RESET}")
+            print(f"{Colors.CYAN}Total shares received: {len(self._share_log)}{Colors.RESET}")
+
+    async def __aenter__(self) -> "StratumServer":
+        await self._start_async()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self._stop_async()
+
+    def _generate_job(self) -> dict[str, Any]:
         return {
             "job_id": "".join(random.choices(string.hexdigits.lower(), k=16)),
             "prev_hash": "".join(random.choices(string.hexdigits.lower(), k=64)),
@@ -97,49 +141,41 @@ class StratumServer:
             "clean_jobs": True,
         }
 
-    async def broadcast_job(self):
-        """Periodically broadcast new mining jobs to all connected clients"""
-        while self.running:
+    async def _broadcast_job(self):
+        while self._running:
             await asyncio.sleep(10)
-            if not self.connections:
+            if not self._connections:
                 continue
 
-            self.current_job = self.generate_job()
+            self._current_job = self._generate_job()
 
             notification = {
                 "id": None,
                 "method": "mining.notify",
                 "params": [
-                    self.current_job["job_id"],
-                    self.current_job["prev_hash"],
-                    self.current_job["coinb1"],
-                    self.current_job["coinb2"],
-                    self.current_job["merkle_branch"],
-                    self.current_job["version"],
-                    self.current_job["nbits"],
-                    self.current_job["ntime"],
-                    self.current_job["clean_jobs"],
+                    self._current_job["job_id"],
+                    self._current_job["prev_hash"],
+                    self._current_job["coinb1"],
+                    self._current_job["coinb2"],
+                    self._current_job["merkle_branch"],
+                    self._current_job["version"],
+                    self._current_job["nbits"],
+                    self._current_job["ntime"],
+                    self._current_job["clean_jobs"],
                 ],
             }
 
             message = json.dumps(notification)
             data = message.encode("utf-8") + b"\n"
 
-            for _client_id, writer in list(self.connections.items()):
+            for _client_id, writer in list(self._connections.items()):
                 try:
-                    log(
-                        "INFO",
-                        _client_id,
-                        f"Broadcasting job {self.current_job['job_id'][:8]}...",
-                        data,
-                        "SEND",
-                    )
                     writer.write(data)
                     await writer.drain()
-                except Exception as e:
-                    log("ERROR", _client_id, f"Failed to broadcast: {e}")
+                except Exception:
+                    pass
 
-    async def handle_client(
+    async def _handle_client(
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
@@ -147,24 +183,26 @@ class StratumServer:
         client_id = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
         peername = writer.get_extra_info("peername")
 
-        self.connections[client_id] = writer
-        log(
-            "INFO",
-            client_id,
-            f"{Colors.GREEN}New connection from {peername[0]}:{peername[1]}{Colors.RESET}",
-        )
+        self._connections[client_id] = writer
+        if not self.quiet:
+            _log(
+                "INFO",
+                client_id,
+                f"{Colors.GREEN}New connection from {peername[0]}:{peername[1]}{Colors.RESET}",
+            )
 
         buffer = b""
 
         try:
-            while self.running:
+            while self._running:
                 try:
                     data = await asyncio.wait_for(reader.read(4096), timeout=30)
                 except asyncio.TimeoutError:
                     continue
 
                 if not data:
-                    log("INFO", client_id, "Client disconnected (no data)")
+                    if not self.quiet:
+                        _log("INFO", client_id, "Client disconnected (no data)")
                     break
 
                 buffer += data
@@ -175,31 +213,29 @@ class StratumServer:
                         continue
 
                     message = line.decode("utf-8").strip()
-                    log("INFO", client_id, "Raw message received", line, "RECV")
-
-                    response = await self.process_message(client_id, message)
+                    response = await self._process_message(client_id, message)
                     if response:
                         response_data = response.encode("utf-8") + b"\n"
-                        log("INFO", client_id, "Sending response", response_data, "SEND")
                         writer.write(response_data)
                         await writer.drain()
 
         except asyncio.CancelledError:
-            log("INFO", client_id, "Connection cancelled")
-        except Exception as e:
-            log("ERROR", client_id, f"Error: {e}")
+            pass
+        except Exception:
+            pass
         finally:
-            if client_id in self.connections:
-                del self.connections[client_id]
-            if client_id in self.subscriptions:
-                del self.subscriptions[client_id]
-            if client_id in self.authorizations:
-                del self.authorizations[client_id]
+            if client_id in self._connections:
+                del self._connections[client_id]
+            if client_id in self._subscriptions:
+                del self._subscriptions[client_id]
+            if client_id in self._authorizations:
+                del self._authorizations[client_id]
             writer.close()
             await writer.wait_closed()
-            log("INFO", client_id, "Connection closed")
+            if not self.quiet:
+                _log("INFO", client_id, "Connection closed")
 
-    async def process_message(
+    async def _process_message(
         self,
         client_id: str,
         message: str,
@@ -211,14 +247,15 @@ class StratumServer:
             msg_id = msg.get("id")
             params = msg.get("params", [])
 
-            log("INFO", client_id, f"Method: {method}, ID: {msg_id}, Params: {params}")
+            if not self.quiet:
+                _log("INFO", client_id, f"Method: {method}, ID: {msg_id}, Params: {params}")
 
             if method == "mining.subscribe":
                 session_id = "".join(random.choices(string.hexdigits.lower(), k=16))
                 extra_nonce_1 = "".join(random.choices(string.hexdigits.lower(), k=8))
                 extra_nonce_2_length = 4
 
-                self.subscriptions[client_id] = {
+                self._subscriptions[client_id] = {
                     "session_id": session_id,
                     "extra_nonce_1": extra_nonce_1,
                     "extra_nonce_2_length": extra_nonce_2_length,
@@ -235,23 +272,25 @@ class StratumServer:
                     None,
                 ]
 
-                log(
-                    "SUCCESS",
-                    client_id,
-                    f"Subscribed! session_id={session_id}, extra_nonce_1={extra_nonce_1}",
-                )
+                if not self.quiet:
+                    _log(
+                        "SUCCESS",
+                        client_id,
+                        f"Subscribed! session_id={session_id}, extra_nonce_1={extra_nonce_1}",
+                    )
                 return json.dumps({"id": msg_id, "result": result})
 
             elif method == "mining.authorize":
                 worker_name = params[0] if params else "unknown"
 
-                self.authorizations[client_id] = True
+                self._authorizations[client_id] = True
 
-                log("SUCCESS", client_id, f"Authorized worker: {worker_name}")
+                if not self.quiet:
+                    _log("SUCCESS", client_id, f"Authorized worker: {worker_name}")
                 return json.dumps({"id": msg_id, "result": True})
 
             elif method == "mining.submit":
-                if client_id in self.authorizations and self.authorizations[client_id]:
+                if client_id in self._authorizations and self._authorizations[client_id]:
                     if params:
                         share = {
                             "client_id": client_id,
@@ -262,109 +301,54 @@ class StratumServer:
                             "nonce": params[4],
                             "timestamp": datetime.now().isoformat(),
                         }
-                        self.share_log.append(share)
+                        self._share_log.append(share)
 
-                        log("SUCCESS", client_id, "SHARE RECEIVED:")
-                        log("INFO", client_id, f"  Worker: {share['worker']}")
-                        log("INFO", client_id, f"  Job ID: {share['job_id']}")
-                        log("INFO", client_id, f"  ExtraNonce2: {share['extra_nonce_2']}")
-                        log("INFO", client_id, f"  NTime: {share['ntime']}")
-                        log("INFO", client_id, f"  Nonce: {share['nonce']}")
+                        if not self.quiet:
+                            _log("SUCCESS", client_id, "SHARE RECEIVED:")
+                            _log("INFO", client_id, f"  Worker: {share['worker']}")
+                            _log("INFO", client_id, f"  Job ID: {share['job_id']}")
 
                     result = True
                 else:
-                    log("WARNING", client_id, "Submit from unauthorized client")
+                    if not self.quiet:
+                        _log("WARNING", client_id, "Submit from unauthorized client")
                     result = False
 
                 return json.dumps({"id": msg_id, "result": result})
 
             elif method == "mining.get_transactions":
-                log("INFO", client_id, "get_transactions requested")
+                if not self.quiet:
+                    _log("INFO", client_id, "get_transactions requested")
                 result = []
                 return json.dumps({"id": msg_id, "result": result})
 
             else:
-                log("WARNING", client_id, f"Unknown method: {method}")
+                if not self.quiet:
+                    _log("WARNING", client_id, f"Unknown method: {method}")
 
-        except json.JSONDecodeError as e:
-            log("ERROR", client_id, f"JSON decode error: {e}")
-        except Exception as e:
-            log("ERROR", client_id, f"Error processing message: {e}")
+        except json.JSONDecodeError:
+            pass
+        except Exception:
+            pass
 
         return None
 
-    async def start(self):
-        self.server = await asyncio.start_server(
-            self.handle_client,
-            self.host,
-            self.port,
-        )
-        self.running = True
-        addr = self.server.sockets[0].getsockname()
-        print(
-            f"{Colors.BOLD}{Colors.GREEN}Stratum Server starting on {addr[0]}:{addr[1]}{Colors.RESET}"
-        )
-        print(f"{Colors.CYAN}Waiting for connections...{Colors.RESET}")
-        sys.stdout.flush()
-
-        self.job_broadcast_task = asyncio.create_task(self.broadcast_job())
-
-        async with self.server:
-            await self.server.serve_forever()
-
-    async def stop(self):
-        self.running = False
-        if self.job_broadcast_task:
-            self.job_broadcast_task.cancel()
-            try:
-                await self.job_broadcast_task
-            except asyncio.CancelledError:
-                pass
-
-        print(f"\n{Colors.YELLOW}Shutting down...{Colors.RESET}")
-
-        for _client_id, writer in list(self.connections.items()):
-            writer.close()
-            await writer.wait_closed()
-
-        if self.server:
-            self.server.close()
-            await self.server.wait_closed()
-
-        print(f"{Colors.GREEN}Server stopped.{Colors.RESET}")
-        print(f"{Colors.CYAN}Total shares received: {len(self.share_log)}{Colors.RESET}")
-
     def get_stats(self) -> dict[str, Any]:
         return {
-            "connections": len(self.connections),
-            "subscriptions": len(self.subscriptions),
-            "authorizations": len(self.authorizations),
-            "shares_submitted": len(self.share_log),
+            "connections": len(self._connections),
+            "subscriptions": len(self._subscriptions),
+            "authorizations": len(self._authorizations),
+            "shares_submitted": len(self._share_log),
         }
 
+    @property
+    def share_log(self) -> list[dict[str, Any]]:
+        return self._share_log
 
-async def main():
-    server = StratumServer(host="127.0.0.1", port=3333)
+    @property
+    def subscriptions(self) -> dict[str, dict[str, Any]]:
+        return self._subscriptions
 
-    loop = asyncio.get_running_loop()
-
-    def signal_handler():
-        print(f"\n{Colors.YELLOW}Received signal, shutting down...{Colors.RESET}")
-        asyncio.create_task(server.stop())
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, signal_handler)
-
-    try:
-        await server.start()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        await server.stop()
-
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    @property
+    def authorizations(self) -> dict[str, bool]:
+        return self._authorizations
