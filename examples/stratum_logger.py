@@ -1,3 +1,4 @@
+#!/usr/bin/env -S minesploit -s
 """Stratum V1 Sniffer Example - intercept and log mining protocol messages"""
 
 import asyncio

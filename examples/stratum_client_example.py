@@ -1,3 +1,4 @@
+#!/usr/bin/env -S minesploit -s
 """Stratum V1 Mining Client Example"""
 
 import asyncio

@@ -1,3 +1,4 @@
+#!/usr/bin/env -S minesploit -s
 """Stratum Share Validator Example
 
 Connects to a Stratum pool, receives mining jobs, and validates share data

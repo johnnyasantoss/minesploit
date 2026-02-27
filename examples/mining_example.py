@@ -1,14 +1,25 @@
-#!/usr/bin/env python
-"""Simple CPU mining example - test hypothesis with minimal code"""
+#!/usr/bin/env -S minesploit -s
+"""Simple mining example - test stratum server hypothesis"""
 
-from minesploit.protocols.stratum.server import StratumServer
-from minesploit.utils.miner import CPUMiner
+import asyncio
 
-pool = StratumServer().start()
-miner = CPUMiner(threads=2, pool=pool, user="test.worker").start()
+from minesploit.protocols.stratum.client import StratumClient
 
-assert pool.has_workers(), "No workers connected!"
-print(f"Hashrate: {miner.get_stats()['hashrate_khs']} kH/s")
 
-miner.stop()
-pool.stop()
+async def test():
+    from minesploit.protocols.stratum.server import StratumServer
+
+    pool = StratumServer(verbosity="error").start()
+    await asyncio.sleep(0.5)
+
+    client = StratumClient(
+        host="127.0.0.1", port=3333, worker_name="test.worker", verbosity="error"
+    )
+    await client.connect()
+    await client.subscribe()
+    print(f"Stats: {pool.get_stats()}")
+    await client.close()
+    pool.stop()
+
+
+asyncio.run(test())
