@@ -1,41 +1,77 @@
 """Minesploit REPL shell"""
 
 import cmd
+import random
 import sys
 from typing import Any
 
+BANNER_PHRASES = [
+    "Stack sats, not vulnz",
+    "HODL your keys, crack their protocols",
+    "In code we trust, especially when it's audited",
+    "Layer 2: More secure than your pool",
+    "Mining to the moon, one CVE at a time",
+    "Don't trust, verify... the exploit",
+    "51% attacks are just a community reorganization",
+    "SIP-009: Never roll back a penetration test",
+    "Orange pilling, white hat style",
+    "Proof of Work > Proof of Vulnerability",
+]
 
-class MinesploitShell(cmd.Cmd):
-    intro = """
+EXPLOIT_COUNT = 5
+
+
+def generate_banner() -> str:
+    phrase = random.choice(BANNER_PHRASES)
+    padding = (60 - len(phrase)) // 2
+    padded_phrase = " " * padding + phrase + " " * (60 - len(phrase) - padding)
+
+    return f"""
+ ______________________________________________________________
+| {padded_phrase} |
+|______________________________________________________________|
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||
+
  Minesploit | Bitcoin Mining Security Research Framework
-─────────────────────────────────────────────────────────
- [✓] Authorized security testing only
- [✓] CVE-based exploit modules
- [✓] Stratum, Bitcoin Core, cgminer testing
+ ─────────────────────────────────────────────────────────
+ [⚡] Authorized security testing only | Use responsibly
 
- COMMANDS                     DESCRIPTION
-─────────────────────────────────────────────────────────
- help                         Show this help message
- list exploits                List all available exploits
- search <query>               Search exploits by name/CVE
- use <exploit>                Select an exploit module
- set <option> <value>         Set option (RHOSTS, RPORT, etc)
- show options                 Show current configuration
- check                        Check if target is vulnerable
- run                          Run exploit against target
- verify                       Verify exploit success
- exit/quit                    Exit the shell
+ ┌─────────────────────────────────────────────────────────┐
+ │ VERSION    │ EXPLOITS    │ PROTOCOLS                    │
+ │ v0.1.0     │ {EXPLOIT_COUNT:<10}  │ Stratum V1, V2, P2Pool       │
+ └─────────────────────────────────────────────────────────┘
+
+ COMMANDS                  DESCRIPTION
+ ─────────────────────────────────────────────────────────
+ help                      Show this help message
+ list exploits             List all available exploits
+ search <query>            Search exploits by name/CVE
+ use <exploit>             Select an exploit module
+ set <option> <value>      Set option (RHOSTS, RPORT, etc)
+ show options              Show current configuration
+ check                     Check if target is vulnerable
+ run                       Run exploit against target
+ verify                    Verify exploit success
+ exit/quit                 Exit the shell
 
  EXAMPLES
-─────────────────────────────────────────────────────────
+ ─────────────────────────────────────────────────────────
  minesploit> set RHOSTS 192.168.1.100
  minesploit> set RPORT 3333
  minesploit> use cve_2024_blocktxn_dos
  minesploit> check
 
-─────────────────────────────────────────────────────────
- "Stack sats, not vulnz" | v0.1.0
-"""
+ ─────────────────────────────────────────────────────────
+ """
+
+
+class MinesploitShell(cmd.Cmd):
+    intro = generate_banner()
+
     prompt = "minesploit> "
     use_rawinput = True
     current_exploit: Any = None
@@ -50,6 +86,8 @@ class MinesploitShell(cmd.Cmd):
         self._interactive = sys.stdin.isatty()
 
     def cmdloop(self, intro=None):
+        if intro is None:
+            intro = self.intro
         if intro:
             print(intro)
 
