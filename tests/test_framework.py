@@ -1,6 +1,6 @@
 """Tests for framework.py"""
 
-from minesploit.framework import ExploitResult, Exploit, ExploitMeta
+from minesploit.framework import Exploit, ExploitMeta, ExploitResult
 
 
 def test_exploit_result_bool_true():

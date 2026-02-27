@@ -1,6 +1,6 @@
 """Tests for parser.py"""
 
-from minesploit.utils.parser import JSONRPCParser, StratumParser, BTCNodeParser
+from minesploit.utils.parser import BTCNodeParser, JSONRPCParser, StratumParser
 
 
 def test_stratum_parser_create_message():

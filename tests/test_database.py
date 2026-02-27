@@ -1,6 +1,6 @@
 """Tests for database.py"""
 
-from minesploit.database import ExploitDatabase, register_exploit, AVAILABLE_EXPLOITS
+from minesploit.database import AVAILABLE_EXPLOITS, ExploitDatabase, register_exploit
 from minesploit.framework import ExploitMeta
 
 
