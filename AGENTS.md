@@ -139,7 +139,7 @@ class CVE_XXXX_XXXXXX(Exploit):
 
 | CVE | Description | CVSS | Status |
 |-----|-------------|------|--------|
-| CVE-2024-35202 | blocktxn message assertion DoS | 7.5 | Planned |
+| CVE-2024-35202 | blocktxn message assertion DoS | 7.5 | Implemented |
 | CVE-2019-25220 | Headers OOM (memory exhaustion) | 7.0 | Planned |
 | CVE-2024-52916 | Low-difficulty header spam DoS | 6.5 | Planned |
 
@@ -147,8 +147,8 @@ class CVE_XXXX_XXXXXX(Exploit):
 
 | CVE | Description | CVSS | Status |
 |-----|-------------|------|--------|
-| CVE-2018-10058 | Remote API buffer overflow | 9.8 | Planned |
-| CVE-2018-10057 | Remote API path traversal | 7.5 | Planned |
+| CVE-2018-10058 | Remote API buffer overflow | 9.8 | Implemented |
+| CVE-2018-10057 | Remote API path traversal | 7.5 | Implemented |
 
 ### P2Pool / Decentralized Mining
 
