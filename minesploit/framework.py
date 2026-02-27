@@ -1,9 +1,9 @@
 """Core framework classes for Minesploit"""
 
-from dataclasses import dataclass, field
-from typing import Any
-from enum import Enum
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
 
 
 class Severity(Enum):
@@ -77,10 +77,12 @@ class Scanner(ABC):
         self.target: str | None = None
         self.port: int | None = None
 
+    @abstractmethod
     async def scan(self, target: str, **kwargs) -> ExploitResult:
         """Perform scan. Override in subclasses."""
         raise NotImplementedError
 
+    @abstractmethod
     async def identify(self, target: str, **kwargs) -> dict[str, Any]:
         """Identify service/version. Override in subclasses."""
         raise NotImplementedError

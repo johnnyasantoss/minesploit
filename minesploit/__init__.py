@@ -3,8 +3,8 @@
 __version__ = "0.1.0"
 __author__ = "Minesploit Contributors"
 
-from minesploit.framework import Exploit, Scanner
 from minesploit.database import ExploitDatabase
+from minesploit.framework import Exploit, Scanner
 
 __all__ = ["Exploit", "Scanner", "ExploitDatabase", "__version__"]
 

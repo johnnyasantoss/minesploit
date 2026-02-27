@@ -23,7 +23,7 @@ class StratumServer:
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
     ):
-        addr = writer.get_extra_info("peername")
+        writer.get_extra_info("peername")  # noqa: F841
         client_id = "".join(random.choices(string.ascii_letters, k=8))
         self.connections.append(writer)
 
@@ -83,7 +83,7 @@ class StratumServer:
 
             elif method == "mining.authorize":
                 params = msg.get("params", [])
-                worker_name = params[0] if params else ""
+                params[0] if params else ""  # noqa: F841
                 self.authorizations[client_id] = True
 
                 result = True

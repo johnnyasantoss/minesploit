@@ -1,7 +1,6 @@
 """Minesploit REPL shell"""
 
 import cmd
-import sys
 from typing import Any
 
 
@@ -235,7 +234,7 @@ def main():
     shell = MinesploitShell()
 
     if args.script:
-        with open(args.script, "r") as f:
+        with open(args.script) as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#"):

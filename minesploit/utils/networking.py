@@ -1,9 +1,7 @@
 """Network utilities for connecting to mining services"""
 
 import asyncio
-import socket
 import ssl
-from typing import Any
 
 
 class TCPClient:
@@ -21,7 +19,7 @@ class TCPClient:
                 timeout=self.timeout,
             )
             return True
-        except (socket.error, asyncio.TimeoutError, ConnectionRefusedError):
+        except (OSError, asyncio.TimeoutError, ConnectionRefusedError):
             return False
 
     async def send(self, data: bytes) -> bool:
@@ -31,7 +29,7 @@ class TCPClient:
             self.writer.write(data)
             await self.writer.drain()
             return True
-        except socket.error:
+        except OSError:
             return False
 
     async def recv(self, size: int = 4096) -> bytes | None:
@@ -96,7 +94,7 @@ class SSLClient(TCPClient):
                 timeout=self.timeout,
             )
             return True
-        except (socket.error, asyncio.TimeoutError, ConnectionRefusedError):
+        except (OSError, asyncio.TimeoutError, ConnectionRefusedError):
             return False
 
 
@@ -109,7 +107,7 @@ async def scan_port(host: str, port: int, timeout: float = 2.0) -> bool:
         writer.close()
         await writer.wait_closed()
         return True
-    except (socket.error, asyncio.TimeoutError, ConnectionRefusedError):
+    except (OSError, asyncio.TimeoutError, ConnectionRefusedError):
         return False
 
 
@@ -118,7 +116,10 @@ async def scan_ports(host: str, ports: list[int], timeout: float = 1.0) -> dict[
         *[scan_port(host, port, timeout) for port in ports],
         return_exceptions=True,
     )
-    return {port: isinstance(result, bool) and result for port, result in zip(ports, results)}
+    return {
+        port: isinstance(result, bool) and result
+        for port, result in zip(ports, results, strict=True)
+    }
 
 
 def parse_host_port(target: str) -> tuple[str, int]:

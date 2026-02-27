@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from minesploit.framework import ExploitMeta
-from typing import Any
-
 
 AVAILABLE_EXPLOITS: dict[str, ExploitMeta] = {}
 

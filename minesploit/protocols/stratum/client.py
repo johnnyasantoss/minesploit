@@ -1,6 +1,5 @@
 """Stratum V1 mining protocol client"""
 
-import asyncio
 from typing import Any
 
 from minesploit.utils.networking import TCPClient
