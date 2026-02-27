@@ -27,13 +27,28 @@ class StratumServer:
         self._main_task: asyncio.Task | None = None
 
     def start(self) -> "StratumServer":
-        asyncio.get_event_loop().run_until_complete(self._start_async())
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
+
+        if loop.is_running():
+            asyncio.create_task(self._start_async())
+        else:
+            loop.run_until_complete(self._start_async())
         return self
 
     def stop(self) -> None:
         if self._running:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self._stop_async())
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.get_event_loop()
+
+            if loop.is_running():
+                asyncio.create_task(self._stop_async())
+            else:
+                loop.run_until_complete(self._stop_async())
 
     async def _start_async(self) -> None:
         self._server = await asyncio.start_server(

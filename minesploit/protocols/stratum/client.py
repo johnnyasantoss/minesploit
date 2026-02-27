@@ -27,7 +27,7 @@ class StratumClient(MiningClient):
         self.client: TCPClient | None = None
         self._authorized = False
         self._subscribed = False
-        self.session_id: str | None = None
+        self._session_id: str | None = None
         self.extra_nonce_1: str | None = None
         self.extra_nonce_2_length: int = 0
         self._current_job: dict[str, Any] | None = None
@@ -48,6 +48,10 @@ class StratumClient(MiningClient):
     @property
     def subscribed(self) -> bool:
         return self._subscribed
+
+    @property
+    def session_id(self) -> str | None:
+        return self._session_id
 
     async def connect(self) -> bool:
         self._logger.info(f"Connecting to {self.host}:{self.port}")
@@ -77,9 +81,9 @@ class StratumClient(MiningClient):
                     result = parsed["result"]
                     if result and result[0]:
                         self._subscribed = True
-                        self.session_id = result[0]
-                        self.extra_nonce_1 = result[1][0]
-                        self.extra_nonce_2_length = result[1][1]
+                        self._session_id = result[0][0]
+                        self.extra_nonce_1 = result[0][1][0]
+                        self.extra_nonce_2_length = result[0][1][1]
                         self._logger.success("Subscribed successfully")
                         return True
 
