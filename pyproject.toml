@@ -46,7 +46,7 @@ dev = [
 ]
 
 [project.scripts]
-minesploit = "repl.shell:main"
+minesploit = "minesploit.repl.shell:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
