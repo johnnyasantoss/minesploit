@@ -16,12 +16,29 @@ minesploit
 
 ## Available Exploits
 
+### Bitcoin Core Node Vulnerabilities
+- CVE-2018-17144: Bitcoin Core Inflation (CRITICAL)
+- CVE-2024-52914: Bitcoin Core Orphan Transaction DoS (HIGH)
+- CVE-2017-18350: Bitcoin Core SOCKS Proxy Overflow (HIGH)
+- CVE-2024-52912: Bitcoin Core Timestamp Overflow Netsplit
+- CVE-2024-52915: Bitcoin Core INV Memory DoS
+- CVE-2024-52913: Bitcoin Core Transaction Censorship
+- CVE-2024-52921: Bitcoin Core Mutated Blocks Propagation
+- CVE-2024-52920: Bitcoin Core GETDATA CPU DoS
+- CVE-2024-52919: Bitcoin Core Addr Message Spam DoS
+- CVE-2025-46598: Bitcoin Core CPU DoS from Transactions
+- CVE-2025-54604: Bitcoin Core Disk Fill (Spoofed Connections)
+- CVE-2025-54605: Bitcoin Core Disk Fill (Invalid Blocks)
+- CVE-2015-20111: Bitcoin Core miniupnpc RCE
+- CVE-2024-35202: Bitcoin Core blocktxn DoS
+
+### Stratum Protocol Vulnerabilities
 - CVE-2013: Stratum Duplicate Shares
 - CVE-2016: Stratum Mass Duplicate Shares
+
+### Mining Software
 - CVE-2018-10058: cgminer API Buffer Overflow
 - CVE-2018-10057: cgminer Path Traversal
-- CVE-2024-35202: Bitcoin Core blocktxn DoS
-- CVE-2019-25220: Bitcoin Core Headers OOM
 
 ## REPL Usage
 
