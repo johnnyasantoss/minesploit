@@ -3,6 +3,7 @@
 from typing import Any
 
 from minesploit.protocols.mining import MiningClient
+from minesploit.utils.logger import Logger
 from minesploit.utils.networking import TCPClient
 from minesploit.utils.parser import StratumParser
 
@@ -16,11 +17,13 @@ class StratumClient(MiningClient):
         port: int,
         worker_name: str = "",
         worker_password: str = "",
+        verbosity: str = "info",
     ):
         self.host = host
         self.port = port
         self.worker_name = worker_name
         self.worker_password = worker_password
+        self._logger = Logger(name="CLIENT", verbosity=verbosity)
         self.client: TCPClient | None = None
         self._authorized = False
         self._subscribed = False
@@ -47,14 +50,20 @@ class StratumClient(MiningClient):
         return self._subscribed
 
     async def connect(self) -> bool:
+        self._logger.info(f"Connecting to {self.host}:{self.port}")
         self.client = TCPClient(self.host, self.port)
         connected = await self.client.connect()
+        if connected:
+            self._logger.success(f"Connected to {self.host}:{self.port}")
+        else:
+            self._logger.error(f"Failed to connect to {self.host}:{self.port}")
         return connected
 
     async def subscribe(self) -> bool:
         if not self.client:
             return False
 
+        self._logger.info("Sending mining.subscribe request")
         msg = StratumParser.mining_subscribe(
             self.worker_name or "anonymous",
             self.session_id,
@@ -71,8 +80,10 @@ class StratumClient(MiningClient):
                         self.session_id = result[0]
                         self.extra_nonce_1 = result[1][0]
                         self.extra_nonce_2_length = result[1][1]
+                        self._logger.success("Subscribed successfully")
                         return True
 
+        self._logger.warning("Subscription failed")
         return False
 
     async def authorize(self, worker_name: str = "", worker_password: str = "") -> bool:
@@ -82,6 +93,7 @@ class StratumClient(MiningClient):
         name = worker_name or self.worker_name or "anonymous"
         password = worker_password or self.worker_password or "x"
 
+        self._logger.info(f"Authorizing worker: {name}")
         msg = StratumParser.mining_authorize(
             name,
             password,
@@ -93,6 +105,10 @@ class StratumClient(MiningClient):
                 parsed = StratumParser.parse_message(response)
                 if parsed and "result" in parsed:
                     self._authorized = bool(parsed["result"])
+                    if self._authorized:
+                        self._logger.success(f"Worker {name} authorized successfully")
+                    else:
+                        self._logger.warning(f"Worker {name} authorization failed")
 
         return self._authorized
 
@@ -106,6 +122,7 @@ class StratumClient(MiningClient):
         if not self.client or not self.authorized:
             return False
 
+        self._logger.info(f"Submitting share for job {job_id}")
         msg = StratumParser.mining_submit(
             self.worker_name or "anonymous",
             job_id,
@@ -119,7 +136,12 @@ class StratumClient(MiningClient):
             if response:
                 parsed = StratumParser.parse_message(response)
                 if parsed and "result" in parsed:
-                    return parsed["result"] is True
+                    accepted = parsed["result"] is True
+                    if accepted:
+                        self._logger.success("Share accepted")
+                    else:
+                        self._logger.warning("Share rejected")
+                    return accepted
 
         return False
 
@@ -138,6 +160,7 @@ class StratumClient(MiningClient):
                 params = parsed.get("params", [])
 
                 if method == "mining.notify":
+                    self._logger.info(f"Received mining.notify: job_id={params[0]}")
                     self._current_job = {
                         "job_id": params[0],
                         "prev_hash": params[1],
@@ -150,7 +173,7 @@ class StratumClient(MiningClient):
                         "clean_jobs": params[8],
                     }
                 elif method == "mining.set_diff":
-                    pass
+                    self._logger.info("Received mining.set_diff")
 
     async def recv_message(self) -> dict[str, Any] | None:
         if not self.client:

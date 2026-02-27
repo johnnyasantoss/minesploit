@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from minesploit.utils.logger import Logger
+
 
 class StratumSniffer:
     def __init__(
@@ -15,14 +17,14 @@ class StratumSniffer:
         upstream_host: str = "127.0.0.1",
         upstream_port: int = 3333,
         output_file: str | Path | None = None,
-        quiet: bool = False,
+        verbosity: str = "info",
     ):
         self.listen_host = listen_host
         self.listen_port = listen_port
         self.upstream_host = upstream_host
         self.upstream_port = upstream_port
         self.output_file = Path(output_file) if output_file else None
-        self.quiet = quiet
+        self._logger = Logger(name="SNIFFER", verbosity=verbosity)
 
         self._server: asyncio.Server | None = None
         self._running = False
@@ -50,11 +52,10 @@ class StratumSniffer:
         self._running = True
         addr = self._server.sockets[0].getsockname()
 
-        if not self.quiet:
-            print(f"[Sniffer] Listening on {addr[0]}:{addr[1]}")
-            print(f"[Sniffer] Forwarding to {self.upstream_host}:{self.upstream_port}")
-            if self.output_file:
-                print(f"[Sniffer] Logging to {self.output_file}")
+        self._logger.info(f"Listening on {addr[0]}:{addr[1]}")
+        self._logger.info(f"Forwarding to {self.upstream_host}:{self.upstream_port}")
+        if self.output_file:
+            self._logger.info(f"Logging to {self.output_file}")
 
         await self._server.serve_forever()
 
@@ -66,8 +67,7 @@ class StratumSniffer:
             self._server.close()
             await self._server.wait_closed()
 
-        if not self.quiet:
-            print(f"[Sniffer] Stopped. Total messages: {len(self._messages)}")
+        self._logger.info(f"Stopped. Total messages: {len(self._messages)}")
 
     async def __aenter__(self) -> "StratumSniffer":
         await self._start_async()
@@ -104,8 +104,7 @@ class StratumSniffer:
         client_writer: asyncio.StreamWriter,
     ):
         client_id = f"{client_writer.get_extra_info('peername')}"
-        if not self.quiet:
-            print(f"[Sniffer] Client connected: {client_id}")
+        self._logger.info(f"Client connected: {client_id}")
 
         upstream_reader = None
         upstream_writer = None
@@ -115,8 +114,7 @@ class StratumSniffer:
                 self.upstream_host,
                 self.upstream_port,
             )
-            if not self.quiet:
-                print(f"[Sniffer] Connected to upstream {self.upstream_host}:{self.upstream_port}")
+            self._logger.info(f"Connected to upstream {self.upstream_host}:{self.upstream_port}")
 
             await asyncio.gather(
                 self._forward_miner_to_pool(client_reader, upstream_writer),
@@ -131,8 +129,7 @@ class StratumSniffer:
                 await upstream_writer.wait_closed()
             client_writer.close()
             await client_writer.wait_closed()
-            if not self.quiet:
-                print(f"[Sniffer] Client disconnected: {client_id}")
+            self._logger.info(f"Client disconnected: {client_id}")
 
     async def _forward_miner_to_pool(
         self,

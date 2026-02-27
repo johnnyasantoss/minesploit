@@ -12,6 +12,7 @@ async def main():
         upstream_host="127.0.0.1",
         upstream_port=3333,
         output_file="stratum_messages.jsonl",
+        verbosity="debug",
     ) as sniffer:
         print("Sniffer running... press Ctrl+C to stop")
         try:

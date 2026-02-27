@@ -2,27 +2,27 @@
 
 import asyncio
 
-from minesploit.protocols.stratum.server import Colors, StratumServer
+from minesploit.protocols.stratum.server import StratumServer
 
 
 async def main():
-    print(f"{Colors.CYAN}=== RAII Pattern (context manager) ==={Colors.RESET}")
-    async with StratumServer(host="127.0.0.1", port=3333) as server:
-        print(f"{Colors.GREEN}Server started{Colors.RESET}")
+    print("=== RAII Pattern (context manager) ===")
+    async with StratumServer(host="127.0.0.1", port=3333, verbosity="debug") as server:
+        print("Server started")
         await asyncio.sleep(5)
         stats = server.get_stats()
-        print(f"{Colors.BLUE}Stats: {stats}{Colors.RESET}")
-    print(f"{Colors.YELLOW}Server stopped (auto-cleanup){Colors.RESET}")
+        print(f"Stats: {stats}")
+    print("Server stopped (auto-cleanup)")
 
-    print(f"\n{Colors.CYAN}=== Fluent Pattern ==={Colors.RESET}")
-    server = StratumServer(host="127.0.0.1", port=3334)
+    print("\n=== Fluent Pattern ===")
+    server = StratumServer(host="127.0.0.1", port=3334, verbosity="debug")
     server.start()
-    print(f"{Colors.GREEN}Server started{Colors.RESET}")
+    print("Server started")
     await asyncio.sleep(5)
     stats = server.get_stats()
-    print(f"{Colors.BLUE}Stats: {stats}{Colors.RESET}")
+    print(f"Stats: {stats}")
     server.stop()
-    print(f"{Colors.YELLOW}Server stopped{Colors.RESET}")
+    print("Server stopped")
 
 
 if __name__ == "__main__":

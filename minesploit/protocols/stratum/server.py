@@ -4,60 +4,18 @@ import asyncio
 import json
 import random
 import string
-import sys
 import time
 from datetime import datetime
 from typing import Any
 
-
-class Colors:
-    RESET = "\033[0m"
-    RED = "\033[91m"
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    MAGENTA = "\033[95m"
-    CYAN = "\033[96m"
-    WHITE = "\033[97m"
-    BOLD = "\033[1m"
-
-
-def _log(
-    level: str,
-    client_id: str,
-    message: str,
-    data: bytes | None = None,
-    direction: str = "",
-):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-    if direction == "RECV":
-        prefix = f"[ SERVER] [{timestamp}] [CONN:{client_id}] {Colors.MAGENTA}RECV{Colors.RESET}"
-    elif direction == "SEND":
-        prefix = f"[ SERVER] [{timestamp}] [CONN:{client_id}] {Colors.MAGENTA}SEND{Colors.RESET}"
-    else:
-        prefix = f"[ SERVER] [{timestamp}] [CONN:{client_id}]"
-
-    if level == "INFO":
-        level_color = Colors.BLUE
-    elif level == "SUCCESS":
-        level_color = Colors.GREEN
-    elif level == "WARNING":
-        level_color = Colors.YELLOW
-    elif level == "ERROR":
-        level_color = Colors.RED
-    else:
-        level_color = Colors.WHITE
-
-    print(f"{prefix} {level_color}{level}{Colors.RESET}: {message}")
-    sys.stdout.flush()
+from minesploit.utils.logger import Logger
 
 
 class StratumServer:
-    def __init__(self, host: str = "0.0.0.0", port: int = 3333, quiet: bool = False):
+    def __init__(self, host: str = "0.0.0.0", port: int = 3333, verbosity: str = "info"):
         self.host = host
         self.port = port
-        self.quiet = quiet
+        self._logger = Logger(name="SERVER", verbosity=verbosity)
         self._server: asyncio.Server | None = None
         self._running = False
         self._connections: dict[str, asyncio.StreamWriter] = {}
@@ -86,12 +44,8 @@ class StratumServer:
         self._running = True
         addr = self._server.sockets[0].getsockname()
 
-        if not self.quiet:
-            print(
-                f"{Colors.BOLD}{Colors.GREEN}Stratum Server starting on {addr[0]}:{addr[1]}{Colors.RESET}"
-            )
-            print(f"{Colors.CYAN}Waiting for connections...{Colors.RESET}")
-            sys.stdout.flush()
+        self._logger.success(f"Stratum Server starting on {addr[0]}:{addr[1]}")
+        self._logger.info("Waiting for connections...")
 
         self._job_broadcast_task = asyncio.create_task(self._broadcast_job())
 
@@ -106,8 +60,7 @@ class StratumServer:
             except asyncio.CancelledError:
                 pass
 
-        if not self.quiet:
-            print(f"\n{Colors.YELLOW}Shutting down...{Colors.RESET}")
+        self._logger.warning("Shutting down...")
 
         for _client_id, writer in list(self._connections.items()):
             writer.close()
@@ -117,9 +70,8 @@ class StratumServer:
             self._server.close()
             await self._server.wait_closed()
 
-        if not self.quiet:
-            print(f"{Colors.GREEN}Server stopped.{Colors.RESET}")
-            print(f"{Colors.CYAN}Total shares received: {len(self._share_log)}{Colors.RESET}")
+        self._logger.success("Server stopped.")
+        self._logger.info(f"Total shares received: {len(self._share_log)}")
 
     async def __aenter__(self) -> "StratumServer":
         await self._start_async()
@@ -184,12 +136,7 @@ class StratumServer:
         peername = writer.get_extra_info("peername")
 
         self._connections[client_id] = writer
-        if not self.quiet:
-            _log(
-                "INFO",
-                client_id,
-                f"{Colors.GREEN}New connection from {peername[0]}:{peername[1]}{Colors.RESET}",
-            )
+        self._logger.info(f"New connection from {peername[0]}:{peername[1]}")
 
         buffer = b""
 
@@ -201,8 +148,7 @@ class StratumServer:
                     continue
 
                 if not data:
-                    if not self.quiet:
-                        _log("INFO", client_id, "Client disconnected (no data)")
+                    self._logger.info("Client disconnected (no data)")
                     break
 
                 buffer += data
@@ -213,9 +159,11 @@ class StratumServer:
                         continue
 
                     message = line.decode("utf-8").strip()
+                    self._logger.recv(f"Method: {message}", line)
                     response = await self._process_message(client_id, message)
                     if response:
                         response_data = response.encode("utf-8") + b"\n"
+                        self._logger.send(f"Response: {response}", response_data)
                         writer.write(response_data)
                         await writer.drain()
 
@@ -232,8 +180,7 @@ class StratumServer:
                 del self._authorizations[client_id]
             writer.close()
             await writer.wait_closed()
-            if not self.quiet:
-                _log("INFO", client_id, "Connection closed")
+            self._logger.info("Connection closed")
 
     async def _process_message(
         self,
@@ -247,8 +194,7 @@ class StratumServer:
             msg_id = msg.get("id")
             params = msg.get("params", [])
 
-            if not self.quiet:
-                _log("INFO", client_id, f"Method: {method}, ID: {msg_id}, Params: {params}")
+            self._logger.debug(f"Method: {method}, ID: {msg_id}, Params: {params}")
 
             if method == "mining.subscribe":
                 session_id = "".join(random.choices(string.hexdigits.lower(), k=16))
@@ -272,12 +218,9 @@ class StratumServer:
                     None,
                 ]
 
-                if not self.quiet:
-                    _log(
-                        "SUCCESS",
-                        client_id,
-                        f"Subscribed! session_id={session_id}, extra_nonce_1={extra_nonce_1}",
-                    )
+                self._logger.success(
+                    f"Subscribed! session_id={session_id}, extra_nonce_1={extra_nonce_1}"
+                )
                 return json.dumps({"id": msg_id, "result": result})
 
             elif method == "mining.authorize":
@@ -285,8 +228,7 @@ class StratumServer:
 
                 self._authorizations[client_id] = True
 
-                if not self.quiet:
-                    _log("SUCCESS", client_id, f"Authorized worker: {worker_name}")
+                self._logger.success(f"Authorized worker: {worker_name}")
                 return json.dumps({"id": msg_id, "result": True})
 
             elif method == "mining.submit":
@@ -303,28 +245,24 @@ class StratumServer:
                         }
                         self._share_log.append(share)
 
-                        if not self.quiet:
-                            _log("SUCCESS", client_id, "SHARE RECEIVED:")
-                            _log("INFO", client_id, f"  Worker: {share['worker']}")
-                            _log("INFO", client_id, f"  Job ID: {share['job_id']}")
+                        self._logger.success("SHARE RECEIVED:")
+                        self._logger.info(f"  Worker: {share['worker']}")
+                        self._logger.info(f"  Job ID: {share['job_id']}")
 
                     result = True
                 else:
-                    if not self.quiet:
-                        _log("WARNING", client_id, "Submit from unauthorized client")
+                    self._logger.warning("Submit from unauthorized client")
                     result = False
 
                 return json.dumps({"id": msg_id, "result": result})
 
             elif method == "mining.get_transactions":
-                if not self.quiet:
-                    _log("INFO", client_id, "get_transactions requested")
+                self._logger.info("get_transactions requested")
                 result = []
                 return json.dumps({"id": msg_id, "result": result})
 
             else:
-                if not self.quiet:
-                    _log("WARNING", client_id, f"Unknown method: {method}")
+                self._logger.warning(f"Unknown method: {method}")
 
         except json.JSONDecodeError:
             pass
@@ -355,3 +293,6 @@ class StratumServer:
 
     def has_workers(self) -> bool:
         return len(self._authorizations) > 0
+
+    def get_config(self) -> dict:
+        return {"host": "localhost", "port": self.port}

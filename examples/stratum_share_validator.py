@@ -115,6 +115,7 @@ async def run_validator(
         port=port,
         worker_name=worker_name,
         worker_password=worker_password,
+        verbosity="debug",
     )
 
     try:
