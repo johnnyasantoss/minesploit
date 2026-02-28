@@ -5,6 +5,13 @@ import random
 import sys
 from typing import Any
 
+try:
+    import readline
+except ImportError:
+    readline = None  # type: ignore[assignment]
+
+from minesploit.exploits import EXPLOIT_CLASSES
+
 BANNER_PHRASES = [
     "Stack sats, not vulnz",
     "HODL your keys, crack their protocols",
@@ -18,7 +25,9 @@ BANNER_PHRASES = [
     "Proof of Work > Proof of Vulnerability",
 ]
 
-EXPLOIT_COUNT = 5
+EXPLOIT_NAMES = tuple(EXPLOIT_CLASSES.keys())
+EXPLOIT_COUNT = len(EXPLOIT_NAMES)
+SET_OPTIONS = ("RHOSTS", "RPORT", "target", "port")
 
 
 def generate_banner() -> str:
@@ -84,6 +93,9 @@ class MinesploitShell(cmd.Cmd):
         self._ctrl_c_pressed = False
         self._ctrl_d_pressed = False
         self._interactive = sys.stdin.isatty()
+        if self._interactive and readline:
+            readline.set_completer(self.complete)
+            readline.parse_and_bind("tab: complete")
 
     def cmdloop(self, intro=None):
         if intro is None:
@@ -161,17 +173,10 @@ Available Commands:
             print("-" * 60)
             print(f"{'Name':<40} {'Severity':<10} {'CVE':<15}")
             print("-" * 60)
-
-            exploits = [
-                ("cve_2013_stratum_duplicate_shares", "HIGH", "N/A (2013)"),
-                ("cve_2016_stratum_mass_duplicate", "MEDIUM", "N/A (2016)"),
-                ("cve_2018_cgminer_api_overflow", "CRITICAL", "CVE-2018-10058"),
-                ("cve_2018_cgminer_path_traversal", "HIGH", "CVE-2018-10057"),
-                ("cve_2024_blocktxn_dos", "HIGH", "CVE-2024-35202"),
-                ("cve_2019_headers_oom", "HIGH", "CVE-2019-25220"),
-            ]
-
-            for name, severity, cve in exploits:
+            for name, cls in EXPLOIT_CLASSES.items():
+                meta = getattr(cls, "meta", None)
+                severity = meta.severity if meta else "N/A"
+                cve = meta.cve or "N/A"
                 print(f"{name:<40} {severity:<10} {cve:<15}")
             print()
 
@@ -182,20 +187,19 @@ Available Commands:
             return
 
         query = arg.lower()
-        results = [
-            ("cve_2013_stratum_duplicate_shares", "Stratum duplicate shares"),
-            ("cve_2016_stratum_mass_duplicate", "Stratum mass duplicate"),
-            ("cve_2018_cgminer_api_overflow", "cgminer API buffer overflow"),
-            ("cve_2018_cgminer_path_traversal", "cgminer path traversal"),
-            ("cve_2024_blocktxn_dos", "Bitcoin Core blocktxn DoS"),
-            ("cve_2019_headers_oom", "Bitcoin Core headers OOM"),
-        ]
-
         print(f"\nSearch results for '{arg}':")
-        for name, desc in results:
-            if query in name.lower() or query in desc.lower():
+        for name, cls in EXPLOIT_CLASSES.items():
+            meta = getattr(cls, "meta", None)
+            if not meta:
+                if query in name.lower():
+                    print(f"  {name}")
+                continue
+            searchable = " ".join(
+                filter(None, [name, meta.cve, meta.name, meta.description])
+            ).lower()
+            if query in searchable:
                 print(f"  {name}")
-                print(f"    {desc}")
+                print(f"    {meta.description or meta.name}")
         print()
 
     def do_use(self, arg: str):
@@ -204,19 +208,13 @@ Available Commands:
             print("Usage: use <exploit_name>")
             return
 
-        valid_exploits = {
-            "cve_2013_stratum_duplicate_shares": "CVE-2013 Stratum Duplicate Shares",
-            "cve_2016_stratum_mass_duplicate": "CVE-2016 Stratum Mass Duplicate",
-            "cve_2018_cgminer_api_overflow": "CVE-2018-10058 cgminer API Overflow",
-            "cve_2018_cgminer_path_traversal": "CVE-2018-10057 cgminer Path Traversal",
-            "cve_2024_blocktxn_dos": "CVE-2024-35202 Bitcoin Core blocktxn DoS",
-            "cve_2019_headers_oom": "CVE-2019-25220 Bitcoin Core Headers OOM",
-        }
-
-        if arg in valid_exploits:
+        if arg in EXPLOIT_CLASSES:
+            cls = EXPLOIT_CLASSES[arg]
+            meta = getattr(cls, "meta", None)
+            display = meta.name if meta else arg
             self.current_exploit = arg
             self.prompt = f"minesploit ({arg})> "
-            print(f"Using {valid_exploits[arg]}")
+            print(f"Using {display}")
             print("Set RHOSTS and RPORT before running 'check' or 'run'")
         else:
             print(f"Unknown exploit: {arg}")
@@ -319,6 +317,25 @@ Available Commands:
         self.current_exploit = None
         self.prompt = "minesploit> "
         print("Back to main prompt")
+
+    def complete_use(self, text: str, line: str, begidx: int, endidx: int) -> list[str]:
+        """Complete exploit name for use command."""
+        return [name for name in EXPLOIT_NAMES if name.startswith(text)]
+
+    def complete_set(self, text: str, line: str, begidx: int, endidx: int) -> list[str]:
+        """Complete option name for set command (first argument only)."""
+        parts = line.split()
+        if len(parts) > 2:
+            return []
+        return [opt for opt in SET_OPTIONS if opt.startswith(text)]
+
+    def complete_list(self, text: str, line: str, begidx: int, endidx: int) -> list[str]:
+        """Complete subcommand for list."""
+        return [s for s in ("exploits",) if s.startswith(text)]
+
+    def complete_show(self, text: str, line: str, begidx: int, endidx: int) -> list[str]:
+        """Complete subcommand for show."""
+        return [s for s in ("options",) if s.startswith(text)]
 
     def emptyline(self) -> bool:
         return False
