@@ -1,5 +1,6 @@
 """Minesploit REPL shell"""
 
+import asyncio
 import cmd
 import random
 import sys
@@ -266,6 +267,12 @@ Available Commands:
                 print(f"  Exploit: {self.current_exploit}")
             print()
 
+    def _get_exploit_instance(self):
+        """Return an exploit instance for the current module, or None if not runnable."""
+        if self.current_exploit not in EXPLOIT_CLASSES:
+            return None
+        return EXPLOIT_CLASSES[self.current_exploit]()
+
     def do_check(self, arg: str):
         """Check if target is vulnerable"""
         if not self.current_exploit:
@@ -276,9 +283,22 @@ Available Commands:
             print("Target not set. Use 'set RHOSTS <target>'")
             return
 
-        print(f"Checking {self.target}:{self.port or 8333}...")
-        print("[*] This is a demonstration - no actual check performed")
-        print("[+] Target appears vulnerable (demo)")
+        exploit = self._get_exploit_instance()
+        if exploit is None:
+            print("[*] This module does not support live check yet.")
+            return
+
+        port = self.port or 8333
+        print(f"Checking {self.target}:{port}...")
+        try:
+            result = asyncio.run(exploit.check(self.target, port=port))
+            status = "[+]" if result.success else "[-]"
+            print(f"{status} {result.message}")
+            if result.details:
+                for k, v in result.details.items():
+                    print(f"    {k}: {v}")
+        except Exception as e:
+            print(f"[-] Error: {e}")
 
     def do_run(self, arg: str):
         """Run exploit against target"""
@@ -290,9 +310,22 @@ Available Commands:
             print("Target not set. Use 'set RHOSTS <target>'")
             return
 
-        print(f"Running {self.current_exploit} against {self.target}:{self.port or 8333}...")
-        print("[*] This is a demonstration - no actual exploit performed")
-        print("[+] Exploit completed (demo)")
+        exploit = self._get_exploit_instance()
+        if exploit is None:
+            print("[*] This module does not support live run yet.")
+            return
+
+        port = self.port or 8333
+        print(f"Running {self.current_exploit} against {self.target}:{port}...")
+        try:
+            result = asyncio.run(exploit.exploit(self.target, port=port))
+            status = "[+]" if result.success else "[-]"
+            print(f"{status} {result.message}")
+            if result.details:
+                for k, v in result.details.items():
+                    print(f"    {k}: {v}")
+        except Exception as e:
+            print(f"[-] Error: {e}")
 
     def do_verify(self, arg: str):
         """Verify exploit succeeded"""
@@ -300,8 +333,23 @@ Available Commands:
             print("No exploit selected. Use 'use <exploit>' first.")
             return
 
+        exploit = self._get_exploit_instance()
+        if exploit is None:
+            print("[*] This module does not support live verify yet.")
+            return
+
+        if not self.target:
+            print("Target not set. Use 'set RHOSTS <target>'")
+            return
+
+        port = self.port or 8333
         print("Verifying exploit...")
-        print("[*] This is a demonstration - no actual verification performed")
+        try:
+            result = asyncio.run(exploit.verify(self.target, port=port))
+            status = "[+]" if result.success else "[-]"
+            print(f"{status} {result.message}")
+        except Exception as e:
+            print(f"[-] Error: {e}")
 
     def do_exit(self, arg: str):
         """Exit the shell"""
