@@ -53,6 +53,8 @@ class CPUMiner:
         pool = self._get_pool_config()
         container_name = f"minesploit-miner-{id(self)}"
 
+        subprocess.run(["docker", "rm", "-f", container_name], capture_output=True)
+
         cmd = [
             "docker",
             "run",
