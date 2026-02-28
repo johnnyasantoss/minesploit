@@ -1,0 +1,3 @@
+[submodule "sv2-ffi"]
+	path = vendors/sv2-ffi
+	url = https://github.com/stratum-mining/sv2-uniffi.git
