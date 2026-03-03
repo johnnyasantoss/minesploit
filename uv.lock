@@ -121,7 +121,7 @@ wheels = [
 [[package]]
 name = "minesploit"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "base58" },
     { name = "python-bitcoinlib" },
