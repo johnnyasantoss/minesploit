@@ -420,7 +420,7 @@ def main():
             script_content = script_content.split("\n", 1)[1] if "\n" in script_content else ""
 
         if "await " in script_content or "async def" in script_content:
-            wrapped = f"async def _run():\n" + "\n".join(
+            wrapped = "async def _run():\n" + "\n".join(
                 "    " + line for line in script_content.split("\n")
             )
             exec(wrapped, namespace)

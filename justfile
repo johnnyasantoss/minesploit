@@ -5,7 +5,7 @@ _default:
 
 # Run ruff linter
 lint:
-    uv run ruff check .
+    uv run ruff check --exclude vendors/,examples/ .
 
 # Run mypy type checker
 check:

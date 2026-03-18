@@ -1,7 +1,6 @@
 #!/usr/bin/env -S minesploit -s
 """Stratum V1 hashrate diversion hypothesis"""
 
-from minesploit.protocols.stratum.proxy import StratumProxy
 from minesploit.protocols.stratum.server import StratumServer
 from minesploit.protocols.stratum.sniffer import StratumSniffer
 from minesploit.utils.miner import CPUMiner, PoolConfig

@@ -96,16 +96,6 @@ class StratumToStratumV2:
         self._upstream_pubkey = pubkey
         return self
 
-    def downstream_host(self, host: str) -> "StratumToStratumV2":
-        """Set downstream listen address for SV1 miners (fluent)"""
-        self._downstream_host = host
-        return self
-
-    def downstream_port(self, port: int) -> "StratumToStratumV2":
-        """Set downstream listen port for SV1 miners (fluent)"""
-        self._downstream_port = port
-        return self
-
     def channel_kind(self, kind: str) -> "StratumToStratumV2":
         """Set channel kind: 'Extended' or 'Group' (fluent)"""
         self._channel_kind = kind
