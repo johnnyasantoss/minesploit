@@ -5,13 +5,14 @@ Bitcoin Mining Security Research Framework for white hat hackers and security re
 ## Quick Start
 
 ```bash
+# Clone with submodules (or init them if already cloned)
+git submodule update --init
+
 # Install dependencies
 uv sync
 
 # Run the REPL
-python -m minesploit.repl
-# or
-minesploit
+uv run minesploit
 ```
 
 ## Running Scripts
