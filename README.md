@@ -12,9 +12,7 @@ git submodule update --init
 uv sync
 
 # Run the REPL
-python -m minesploit.repl
-# or
-minesploit
+uv run minesploit
 ```
 
 ## Running Scripts
